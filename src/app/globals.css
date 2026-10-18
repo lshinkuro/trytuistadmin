@@ -1,0 +1,179 @@
+@import "tailwindcss";
+
+/*
+ * Token tema TryTuist Admin. Komponen hanya memakai nama token (bg-surface, text-ink,
+ * border-line, bg-brand, ...), jadi ganti warna / dark mode cukup di file ini.
+ *
+ * Brand chili #D9480F = warna brand app iOS (TTUI Color.brand).
+ * Warna status pesanan punya arti tetap: kunyit = sedang jalan, pandan = sukses,
+ * merah = gagal, abu = batal.
+ */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root {
+  --canvas: #f1f2f4;
+  --surface: #ffffff;
+  --surface-muted: #f7f8f9;
+  --ink: #1b1f24;
+  --ink-muted: #5b6470;
+  --ink-faint: #8a929c;
+  --line: #dde1e6;
+  --line-strong: #c4cad2;
+
+  --brand: #d9480f;
+  --brand-hover: #bf3d0b;
+  --brand-ink: #ffffff;
+  --brand-soft: #fcebe3;
+
+  --success: #237a57;
+  --success-soft: #e3f3ec;
+  --warning: #9a6312;
+  --warning-soft: #fbf0d9;
+  --danger: #b42318;
+  --danger-soft: #fdeceb;
+  --info: #2f5f98;
+  --info-soft: #e6eef8;
+  --neutral-soft: #eceef1;
+
+  --focus: #d9480f;
+  /* Warna mark grafik (divalidasi: kontras ≥ 3:1 & band lightness, light + dark). */
+  --chart-sales: #d9480f;
+  --chart-purchases: #2f5f98;
+  --radius-control: 6px;
+  --radius-panel: 10px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --canvas: #14171b;
+    --surface: #1c2025;
+    --surface-muted: #22272d;
+    --ink: #eceef1;
+    --ink-muted: #a0a8b2;
+    --ink-faint: #737c87;
+    --line: #2d333a;
+    --line-strong: #3d444d;
+    --brand: #f0662d;
+    --brand-hover: #f5804f;
+    --brand-ink: #1b0d06;
+    --brand-soft: #3a2117;
+    --success: #4cc08d;
+    --success-soft: #16322a;
+    --warning: #e3ac4c;
+    --warning-soft: #362a14;
+    --danger: #f2766b;
+    --danger-soft: #3b1d1b;
+    --info: #7fa9de;
+    --info-soft: #1b2a3d;
+    --neutral-soft: #2a3037;
+    --focus: #f0662d;
+    --chart-sales: #e85a22;
+    --chart-purchases: #5b8fd0;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --canvas: #14171b;
+  --surface: #1c2025;
+  --surface-muted: #22272d;
+  --ink: #eceef1;
+  --ink-muted: #a0a8b2;
+  --ink-faint: #737c87;
+  --line: #2d333a;
+  --line-strong: #3d444d;
+  --brand: #f0662d;
+  --brand-hover: #f5804f;
+  --brand-ink: #1b0d06;
+  --brand-soft: #3a2117;
+  --success: #4cc08d;
+  --success-soft: #16322a;
+  --warning: #e3ac4c;
+  --warning-soft: #362a14;
+  --danger: #f2766b;
+  --danger-soft: #3b1d1b;
+  --info: #7fa9de;
+  --info-soft: #1b2a3d;
+  --neutral-soft: #2a3037;
+  --focus: #f0662d;
+  --chart-sales: #e85a22;
+  --chart-purchases: #5b8fd0;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: var(--brand-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-neutral-soft: var(--neutral-soft);
+  --color-focus: var(--focus);
+  --color-chart-sales: var(--chart-sales);
+  --color-chart-purchases: var(--chart-purchases);
+  --radius-control: var(--radius-control);
+  --radius-panel: var(--radius-panel);
+  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    font-feature-settings: "ss01";
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  /* Angka (harga, jumlah) selalu sejajar di tabel & KPI. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  dialog::backdrop {
+    background: rgb(20 23 27 / 0.45);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Grafik (Recharts): grid & teks memakai token, bukan warna series. */
+.tt-chart .recharts-cartesian-grid line {
+  stroke: var(--line);
+}
+.tt-chart .recharts-cartesian-axis-tick-value,
+.tt-chart .recharts-text {
+  fill: var(--ink-faint);
+  font-size: 11px;
+}
+.tt-chart .recharts-tooltip-cursor {
+  fill: var(--neutral-soft);
+}
