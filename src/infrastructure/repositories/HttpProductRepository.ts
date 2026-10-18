@@ -12,6 +12,7 @@ export class HttpProductRepository implements ProductRepository {
       q: filter.query,
       category_id: filter.categoryId,
       available: filter.availability === "all" ? undefined : filter.availability === "available",
+      store_id: filter.storeId,
     });
     return res.data.map(toProduct);
   }

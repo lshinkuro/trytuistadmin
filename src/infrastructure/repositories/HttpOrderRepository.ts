@@ -12,6 +12,7 @@ export class HttpOrderRepository implements OrderRepository {
       q: filter.query,
       from: filter.range?.from,
       to: filter.range?.to,
+      store_id: filter.storeId,
       page: filter.page,
       limit: filter.limit,
     });

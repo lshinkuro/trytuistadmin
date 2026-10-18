@@ -7,8 +7,8 @@ import { toDashboard } from "../mappers/mappers";
 export class HttpDashboardRepository implements DashboardRepository {
   constructor(private readonly http: HttpClient) {}
 
-  async get(range: DateRange) {
-    const res = await this.http.get<DashboardDTO>("/v1/admin/dashboard", { from: range.from, to: range.to });
+  async get(range: DateRange, storeId: string) {
+    const res = await this.http.get<DashboardDTO>("/v1/admin/dashboard", { from: range.from, to: range.to, store_id: storeId });
     return toDashboard(res.data);
   }
 }

@@ -23,12 +23,16 @@ export interface Product {
   isBestSeller: boolean;
   options: ProductOption[];
   updatedAt: Date;
+  /** Hanya saat daftar diminta untuk satu outlet. */
+  store?: { isAvailable: boolean; isSoldOutHere: boolean };
 }
 
 export interface ProductFilter {
   query: string;
   categoryId: string;
   availability: "all" | "available" | "unavailable";
+  /** Kosong = stok pusat (semua outlet). */
+  storeId: string;
 }
 
 /** Varian di form. `id` kosong = varian baru (id dibuat server dari nama). */

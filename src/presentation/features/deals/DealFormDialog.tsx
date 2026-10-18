@@ -41,7 +41,7 @@ function initialState(deal: Deal | null): FormState {
 
 export function DealFormDialog({ deal, onClose }: { deal: Deal | null; onClose: () => void }) {
   const [form, setForm] = useState(() => initialState(deal));
-  const products = useProducts({ query: "", categoryId: "", availability: "all" });
+  const products = useProducts({ query: "", categoryId: "", availability: "all", storeId: "" });
   const save = useSaveDeal();
   const errors = save.error instanceof AppError ? save.error.fieldErrors : {};
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));

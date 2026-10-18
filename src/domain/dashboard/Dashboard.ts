@@ -41,8 +41,12 @@ export interface Dashboard {
   byStatus: { status: OrderStatus; count: number; total: number }[];
   topProducts: { productId: string; productName: string; quantity: number; revenue: number }[];
   paymentMethods: { method: PaymentMethod; count: number; total: number }[];
+  /** null = semua outlet. */
+  storeId: string | null;
+  /** Perbandingan outlet (kosong bila difilter per outlet). */
+  byStore: { storeId: string; storeName: string; orders: number; ordersCompleted: number; revenue: number; successRatePct: number }[];
 }
 
 export interface DashboardRepository {
-  get(range: DateRange): Promise<Dashboard>;
+  get(range: DateRange, storeId: string): Promise<Dashboard>;
 }

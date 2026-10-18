@@ -9,6 +9,7 @@ import {
   makeListProducts,
   makeUpdateProduct,
 } from "@/application/product/productUseCases";
+import { makeListStores, makeSaveStore, makeSetStoreStock, makeSetStoreTempClosed } from "@/application/store/storeUseCases";
 import { makeListUsers } from "@/application/user/userUseCases";
 import type { AuditLogRepository } from "@/domain/audit/AuditLog";
 import type { AuthRepository } from "@/domain/auth/Auth";
@@ -16,6 +17,7 @@ import type { DashboardRepository } from "@/domain/dashboard/Dashboard";
 import type { DealRepository } from "@/domain/deal/DealRepository";
 import type { OrderRepository } from "@/domain/order/OrderRepository";
 import type { ProductRepository } from "@/domain/product/ProductRepository";
+import type { StoreRepository } from "@/domain/store/Store";
 import type { UserRepository } from "@/domain/user/User";
 import { createHttpClient } from "./http/httpClient";
 import { HttpAuditLogRepository } from "./repositories/HttpAuditLogRepository";
@@ -24,6 +26,7 @@ import { HttpDashboardRepository } from "./repositories/HttpDashboardRepository"
 import { HttpDealRepository } from "./repositories/HttpDealRepository";
 import { HttpOrderRepository } from "./repositories/HttpOrderRepository";
 import { HttpProductRepository } from "./repositories/HttpProductRepository";
+import { HttpStoreRepository } from "./repositories/HttpStoreRepository";
 import { HttpUserRepository } from "./repositories/HttpUserRepository";
 
 export interface Repositories {
@@ -32,6 +35,7 @@ export interface Repositories {
   deals: DealRepository;
   dashboard: DashboardRepository;
   users: UserRepository;
+  stores: StoreRepository;
   auth: AuthRepository;
   audit: AuditLogRepository;
 }
@@ -45,6 +49,7 @@ export function createHttpRepositories(): Repositories {
     deals: new HttpDealRepository(backend),
     dashboard: new HttpDashboardRepository(backend),
     users: new HttpUserRepository(backend),
+    stores: new HttpStoreRepository(backend),
     auth: new HttpAuthRepository(auth, backend),
     audit: new HttpAuditLogRepository(backend),
   };
@@ -69,6 +74,10 @@ export function createContainer(repos: Repositories = createHttpRepositories()) 
     deleteDeal: makeDeleteDeal(repos.deals),
     getDashboard: makeGetDashboard(repos.dashboard),
     listUsers: makeListUsers(repos.users),
+    listStores: makeListStores(repos.stores),
+    saveStore: makeSaveStore(repos.stores),
+    setStoreTempClosed: makeSetStoreTempClosed(repos.stores),
+    setStoreStock: makeSetStoreStock(repos.stores),
     login: makeLogin(repos.auth),
     logout: makeLogout(repos.auth),
     getCurrentAdmin: makeGetCurrentAdmin(repos.auth),

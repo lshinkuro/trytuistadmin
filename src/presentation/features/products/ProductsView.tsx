@@ -1,6 +1,7 @@
 "use client";
 
 import { Plus, Search } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import type { Product, ProductFilter } from "@/domain/product/Product";
 import { formatNumber, formatRupiah } from "@/shared/lib/format";
@@ -9,6 +10,8 @@ import { PageHeader } from "../../components/layout/PageHeader";
 import { Badge, Button, Card, Input, Select, Skeleton, Switch, Table, TBody, TD, TH, THead, TR } from "../../components/ui";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { useCategories, useProducts, useUpdateProduct } from "../../hooks/useProducts";
+import { useSetStoreStock, useStores } from "../../hooks/useStores";
+import { StoreSelect } from "../stores/StoreSelect";
 import { ProductFormDialog } from "./ProductFormDialog";
 
 export function ProductsView() {
@@ -16,16 +19,20 @@ export function ProductsView() {
   const [categoryId, setCategoryId] = useState("");
   const [availability, setAvailability] = useState<ProductFilter["availability"]>("all");
   const [editing, setEditing] = useState<Product | "new" | null>(null);
-  const filter: ProductFilter = { query: useDebouncedValue(query), categoryId, availability };
+  // ?store= dari halaman Outlet ("Menu habis").
+  const [storeId, setStoreId] = useState(useSearchParams().get("store") ?? "");
+  const filter: ProductFilter = { query: useDebouncedValue(query), categoryId, availability, storeId };
   const products = useProducts(filter);
   const categories = useCategories();
   const update = useUpdateProduct();
+  const storeStock = useSetStoreStock();
+  const storeName = useStores().data?.find((s) => s.id === storeId)?.name;
 
   return (
     <>
       <PageHeader
         title="Produk & harga"
-        description="Tambah menu baru, ubah harga, varian, dan stok. Perubahan langsung dipakai aplikasi dan dihitung ulang server saat checkout."
+        description="Tambah menu, ubah harga (sama di semua outlet), varian, dan stok. Pilih outlet untuk menandai menu habis di outlet itu saja."
         actions={
           <Button onClick={() => setEditing("new")}>
             <Plus aria-hidden /> Tambah menu
@@ -33,6 +40,7 @@ export function ProductsView() {
         }
       />
       <div className="mb-4 flex flex-wrap gap-3">
+        <StoreSelect value={storeId} onChange={setStoreId} allLabel="Stok pusat (semua outlet)" />
         <label className="relative min-w-60 flex-1">
           <span className="sr-only">Cari produk</span>
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-faint" aria-hidden />
@@ -69,7 +77,7 @@ export function ProductsView() {
                 <TH className="text-right">Harga normal</TH>
                 <TH className="text-right">Dibayar pelanggan</TH>
                 <TH className="text-right">Terjual</TH>
-                <TH>Stok</TH>
+                <TH>{storeName ? `Stok di ${storeName}` : "Stok (semua outlet)"}</TH>
                 <TH>
                   <span className="sr-only">Aksi</span>
                 </TH>
@@ -116,13 +124,27 @@ export function ProductsView() {
                   </TD>
                   <TD className="tabular text-right text-ink-muted">{formatNumber(p.soldCount)}</TD>
                   <TD>
-                    <Switch
-                      label={p.isAvailable ? "Tersedia" : "Habis"}
-                      checked={p.isAvailable}
-                      disabled={update.isPending && update.variables?.id === p.id}
-                      onChange={(e) => update.mutate({ id: p.id, isAvailable: e.target.checked })}
-                      aria-label={`Stok ${p.name}`}
-                    />
+                    {storeId && p.store ? (
+                      p.isAvailable ? (
+                        <Switch
+                          label={p.store.isAvailable ? "Tersedia" : "Habis di outlet ini"}
+                          checked={p.store.isAvailable}
+                          disabled={storeStock.isPending && storeStock.variables?.productId === p.id}
+                          onChange={(e) => storeStock.mutate({ storeId, productId: p.id, isAvailable: e.target.checked })}
+                          aria-label={`Stok ${p.name} di ${storeName ?? storeId}`}
+                        />
+                      ) : (
+                        <span className="text-sm text-ink-muted">Habis di semua outlet</span>
+                      )
+                    ) : (
+                      <Switch
+                        label={p.isAvailable ? "Tersedia" : "Habis"}
+                        checked={p.isAvailable}
+                        disabled={update.isPending && update.variables?.id === p.id}
+                        onChange={(e) => update.mutate({ id: p.id, isAvailable: e.target.checked })}
+                        aria-label={`Stok ${p.name} di semua outlet`}
+                      />
+                    )}
                   </TD>
                   <TD className="text-right">
                     <Button size="sm" variant="outline" onClick={() => setEditing(p)}>
@@ -134,7 +156,7 @@ export function ProductsView() {
             </TBody>
           </Table>
           {products.data?.length === 0 &&
-            (filter.query || categoryId || availability !== "all" ? (
+            (filter.query || categoryId || availability !== "all" || storeId ? (
               <EmptyState title="Produk tidak ditemukan" description="Coba kata kunci atau filter lain." />
             ) : (
               <EmptyState

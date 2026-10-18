@@ -6,6 +6,7 @@ import {
   LogOut,
   Menu,
   ReceiptText,
+  Store,
   TicketPercent,
   Users,
   UtensilsCrossed,
@@ -26,13 +27,14 @@ const NAV = [
   { href: "/orders", label: "Pesanan", icon: ReceiptText, showActiveCount: true },
   { href: "/products", label: "Produk & harga", icon: UtensilsCrossed },
   { href: "/promos", label: "Promo", icon: TicketPercent },
+  { href: "/stores", label: "Outlet", icon: Store },
   { href: "/customers", label: "Pelanggan", icon: Users },
   { href: "/activity", label: "Aktivitas", icon: History },
 ] as const;
 
 /** Jumlah pesanan yang masih perlu ditangani (badge di menu Pesanan). */
 function useActiveOrderCount() {
-  const { data } = useOrders({ statuses: ACTIVE_STATUSES, query: "", range: null, page: 1, limit: 1 });
+  const { data } = useOrders({ statuses: ACTIVE_STATUSES, query: "", range: null, storeId: "", page: 1, limit: 1 });
   return data?.total ?? 0;
 }
 

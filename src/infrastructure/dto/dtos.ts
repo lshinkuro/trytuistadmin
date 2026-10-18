@@ -15,6 +15,7 @@ export interface AdminOrderSummaryDTO {
   payment_method: string;
   item_summary: string;
   qty: number;
+  store_id: string;
   store_name: string;
   customer: CustomerDTO;
   created_at: string;
@@ -68,6 +69,8 @@ export interface AdminProductDTO {
   is_best_seller: boolean;
   options: { id: string; name: string; extra_price: number }[];
   updated_at: string;
+  store_available?: boolean;
+  store_sold_out?: boolean;
 }
 
 export interface CategoryDTO {
@@ -122,6 +125,27 @@ export interface DashboardDTO {
   by_status: { status: string; count: number; total: number }[];
   top_products: { product_id: string; product_name: string; quantity: number; revenue: number }[];
   payment_methods: { method: string; count: number; total: number }[];
+  store_id: string | null;
+  by_store: { store_id: string; store_name: string; orders: number; orders_completed: number; revenue: number; success_rate_pct: number }[];
+}
+
+export interface AdminStoreDTO {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  phone: string | null;
+  opens_at: string;
+  closes_at: string;
+  hours_label: string;
+  delivery_radius_km: number;
+  is_active: boolean;
+  is_temporarily_closed: boolean;
+  is_open_now: boolean;
+  sort_order: number;
+  unavailable_products: number;
+  today: { orders: number; revenue: number; active: number };
 }
 
 export interface UserDTO {

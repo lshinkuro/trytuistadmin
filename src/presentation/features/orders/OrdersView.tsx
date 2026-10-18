@@ -13,6 +13,7 @@ import { EmptyState, ErrorState, Pagination } from "../../components/common/Stat
 import { PageHeader } from "../../components/layout/PageHeader";
 import { Card, Input, Skeleton, Table, TBody, TD, TH, THead, TR } from "../../components/ui";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { StoreSelect } from "../stores/StoreSelect";
 import { useOrders } from "../../hooks/useOrders";
 import { OrderStatusBadge, PAYMENT_LABEL } from "./OrderStatusBadge";
 
@@ -39,6 +40,7 @@ export function OrdersView() {
     () => (params.has("status") ? parseStatuses(params.get("status")) : ACTIVE_STATUSES),
     [params],
   );
+  const storeId = params.get("store") ?? "";
   const from = params.get("from") ?? "";
   const to = params.get("to") ?? "";
   const page = Math.max(1, Number(params.get("page") ?? 1) || 1);
@@ -64,6 +66,7 @@ export function OrdersView() {
     statuses,
     query: params.get("q") ?? "",
     range: from && to ? { from, to } : null,
+    storeId,
     page,
     limit: PAGE_SIZE,
   };
@@ -108,6 +111,10 @@ export function OrdersView() {
               className="pl-9"
             />
           </label>
+          <label className="flex flex-col gap-1 text-sm text-ink-muted">
+            <span className="text-xs font-semibold">Outlet</span>
+            <StoreSelect value={storeId} onChange={(id) => update({ store: id })} className="w-48" />
+          </label>
           <div className="flex items-center gap-2 text-sm text-ink-muted">
             <label className="flex flex-col gap-1">
               <span className="text-xs font-semibold">Dari</span>
@@ -137,6 +144,7 @@ export function OrdersView() {
                 <TH>Pelanggan</TH>
                 <TH>Item</TH>
                 <TH className="text-right">Total</TH>
+                <TH>Outlet</TH>
                 <TH>Pembayaran</TH>
                 <TH>Status</TH>
                 <TH>Dibuat</TH>
@@ -146,7 +154,7 @@ export function OrdersView() {
               {orders.isPending &&
                 Array.from({ length: 6 }, (_, i) => (
                   <TR key={i}>
-                    {Array.from({ length: 7 }, (_, j) => (
+                    {Array.from({ length: 8 }, (_, j) => (
                       <TD key={j}>
                         <Skeleton className="h-4 w-full max-w-32" />
                       </TD>
@@ -171,6 +179,7 @@ export function OrdersView() {
                     <span className="tabular text-xs text-ink-muted">{o.quantity} item</span>
                   </TD>
                   <TD className="tabular text-right font-semibold">{formatRupiah(o.total)}</TD>
+                  <TD className="whitespace-nowrap text-ink-muted">{o.storeName}</TD>
                   <TD className="text-ink-muted">{PAYMENT_LABEL[o.paymentMethod]}</TD>
                   <TD>
                     <OrderStatusBadge status={o.status} />
@@ -183,7 +192,7 @@ export function OrdersView() {
           {orders.data && orders.data.items.length === 0 && (
             <EmptyState
               title="Tidak ada pesanan"
-              description={filter.query || filter.range ? "Coba ubah pencarian atau rentang tanggal." : "Pesanan baru dari aplikasi akan muncul di sini."}
+              description={filter.query || filter.range || storeId ? "Coba ubah pencarian, outlet, atau rentang tanggal." : "Pesanan baru dari aplikasi akan muncul di sini."}
             />
           )}
           {orders.data && (

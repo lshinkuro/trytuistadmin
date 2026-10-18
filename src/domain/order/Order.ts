@@ -29,6 +29,7 @@ export interface OrderSummary {
   paymentMethod: PaymentMethod;
   itemSummary: string;
   quantity: number;
+  storeId: string;
   storeName: string;
   customer: Customer;
   createdAt: Date;
@@ -60,7 +61,7 @@ export interface DeliveryAddress {
   notes: string | null;
 }
 
-export interface OrderDetail extends Omit<OrderSummary, "itemSummary" | "quantity" | "updatedAt"> {
+export interface OrderDetail extends Omit<OrderSummary, "itemSummary" | "quantity" | "updatedAt" | "storeId"> {
   subtotal: number;
   deliveryFee: number;
   discount: number;
@@ -81,6 +82,8 @@ export interface OrderFilter {
   statuses: OrderStatus[];
   query: string;
   range: DateRange | null;
+  /** Kosong = semua outlet. */
+  storeId: string;
   page: number;
   limit: number;
 }

@@ -9,11 +9,13 @@ import {
   type PaymentMethod,
 } from "@/domain/order/Order";
 import type { Category, Product, ProductInput } from "@/domain/product/Product";
+import type { Store, StoreInput } from "@/domain/store/Store";
 import type { MemberTier, User, UserRole } from "@/domain/user/User";
 import type {
   AdminOrderDTO,
   AdminOrderSummaryDTO,
   AdminProductDTO,
+  AdminStoreDTO,
   AuditLogDTO,
   CategoryDTO,
   DashboardDTO,
@@ -39,6 +41,7 @@ export function toOrderSummary(dto: AdminOrderSummaryDTO): OrderSummary {
     paymentMethod: toPayment(dto.payment_method),
     itemSummary: dto.item_summary,
     quantity: dto.qty,
+    storeId: dto.store_id,
     storeName: dto.store_name,
     customer: dto.customer,
     createdAt: new Date(dto.created_at),
@@ -110,7 +113,47 @@ export function toProduct(dto: AdminProductDTO): Product {
     isBestSeller: dto.is_best_seller,
     options: dto.options.map((o) => ({ id: o.id, name: o.name, extraPrice: o.extra_price })),
     updatedAt: new Date(dto.updated_at),
+    ...(dto.store_available !== undefined
+      ? { store: { isAvailable: dto.store_available, isSoldOutHere: dto.store_sold_out ?? false } }
+      : {}),
   };
+}
+
+export function toStore(dto: AdminStoreDTO): Store {
+  return {
+    id: dto.id,
+    name: dto.name,
+    address: dto.address,
+    lat: dto.lat,
+    lng: dto.lng,
+    phone: dto.phone,
+    opensAt: dto.opens_at,
+    closesAt: dto.closes_at,
+    hoursLabel: dto.hours_label,
+    deliveryRadiusKm: dto.delivery_radius_km,
+    isActive: dto.is_active,
+    isTemporarilyClosed: dto.is_temporarily_closed,
+    isOpenNow: dto.is_open_now,
+    sortOrder: dto.sort_order,
+    unavailableProducts: dto.unavailable_products,
+    today: dto.today,
+  };
+}
+
+/** Body POST/PATCH /v1/admin/stores. */
+export function toStoreBody(input: Partial<StoreInput>): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  if (input.name !== undefined) body.name = input.name;
+  if (input.address !== undefined) body.address = input.address;
+  if (input.lat !== undefined) body.lat = input.lat;
+  if (input.lng !== undefined) body.lng = input.lng;
+  if (input.phone !== undefined) body.phone = input.phone;
+  if (input.opensAt !== undefined) body.opens_at = input.opensAt;
+  if (input.closesAt !== undefined) body.closes_at = input.closesAt;
+  if (input.deliveryRadiusKm !== undefined) body.delivery_radius_km = input.deliveryRadiusKm;
+  if (input.isActive !== undefined) body.is_active = input.isActive;
+  if (input.isTemporarilyClosed !== undefined) body.is_temporarily_closed = input.isTemporarilyClosed;
+  return body;
 }
 
 /** Body POST/PATCH /v1/admin/products. Field yang tidak ada di `input` tidak dikirim. */
@@ -209,6 +252,15 @@ export function toDashboard(dto: DashboardDTO): Dashboard {
       revenue: p.revenue,
     })),
     paymentMethods: dto.payment_methods.map((p) => ({ method: toPayment(p.method), count: p.count, total: p.total })),
+    storeId: dto.store_id ?? null,
+    byStore: (dto.by_store ?? []).map((s) => ({
+      storeId: s.store_id,
+      storeName: s.store_name,
+      orders: s.orders,
+      ordersCompleted: s.orders_completed,
+      revenue: s.revenue,
+      successRatePct: s.success_rate_pct,
+    })),
   };
 }
 

@@ -21,6 +21,7 @@ export interface HttpClient {
   get<T>(path: string, query?: Query): Promise<HttpResult<T>>;
   post<T>(path: string, body?: unknown): Promise<HttpResult<T>>;
   patch<T>(path: string, body?: unknown): Promise<HttpResult<T>>;
+  put<T>(path: string, body?: unknown): Promise<HttpResult<T>>;
   delete<T>(path: string): Promise<HttpResult<T>>;
 }
 
@@ -76,6 +77,7 @@ export function createHttpClient(baseUrl = "/api/backend", fetcher: typeof fetch
     get: (path, query) => request("GET", path, undefined, query),
     post: (path, body) => request("POST", path, body ?? {}),
     patch: (path, body) => request("PATCH", path, body ?? {}),
+    put: (path, body) => request("PUT", path, body ?? {}),
     delete: (path) => request("DELETE", path),
   };
 }

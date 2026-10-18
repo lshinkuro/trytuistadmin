@@ -10,9 +10,10 @@ import { formatNumber } from "@/shared/lib/format";
  * Rel status pesanan: alur Menunggu → … → Sukses digambar sebagai satu rel, Gagal & Batal
  * sebagai cabang keluar. Tiap stasiun membuka daftar pesanan dengan filter yang sama.
  */
-export function StatusRail({ byStatus, range }: { byStatus: Dashboard["byStatus"]; range: DateRange }) {
+export function StatusRail({ byStatus, range, storeId = "" }: { byStatus: Dashboard["byStatus"]; range: DateRange; storeId?: string }) {
   const count = (s: OrderStatus) => byStatus.find((x) => x.status === s)?.count ?? 0;
-  const href = (s: OrderStatus) => `/orders?status=${s}&from=${range.from}&to=${range.to}`;
+  const href = (s: OrderStatus) =>
+    `/orders?status=${s}&from=${range.from}&to=${range.to}${storeId ? `&store=${storeId}` : ""}`;
 
   return (
     <section aria-labelledby="rail-title" className="rounded-panel border border-line bg-surface px-5 pt-4 pb-5">

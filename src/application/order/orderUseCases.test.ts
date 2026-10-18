@@ -36,7 +36,7 @@ describe("listOrders", () => {
   it("menolak rentang tanggal tidak valid", () => {
     const repo = fakeRepo();
     expect(() =>
-      makeListOrders(repo)({ statuses: [], query: "", range: { from: "2026-10-18", to: "2026-10-01" }, page: 1, limit: 20 }),
+      makeListOrders(repo)({ statuses: [], query: "", range: { from: "2026-10-18", to: "2026-10-01" }, storeId: "", page: 1, limit: 20 }),
     ).toThrow(ValidationError);
   });
 });

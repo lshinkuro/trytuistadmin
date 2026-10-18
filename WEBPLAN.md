@@ -59,10 +59,11 @@ Semua versi dipin persis di `package.json`.
 | Path | Halaman | Isi | Endpoint (via `/api/backend`) |
 |---|---|---|---|
 | `/login` | Masuk | Email + password akun TryTuist; akun non-admin ditolak | `POST /api/auth/login` → `/v1/auth/login` + `/v1/admin/me` |
-| `/` | Dashboard | Rel status pesanan, penjualan, pembelian, menu terlaris, metode bayar, tabel harian; rentang tanggal di URL (`?from&to`) | `GET /v1/admin/dashboard` |
-| `/orders` | Pesanan | Tab status (default **Aktif**), cari nomor/nama/email, filter tanggal, paginasi; refresh tiap 30 detik | `GET /v1/admin/orders` |
+| `/` | Dashboard | Rel status pesanan, penjualan, pembelian, menu terlaris, metode bayar, tabel harian; rentang tanggal & outlet di URL (`?from&to&store`); tanpa filter outlet ada kartu **Perbandingan outlet** | `GET /v1/admin/dashboard?store_id=` |
+| `/orders` | Pesanan | Tab status (default **Aktif**), cari nomor/nama/email, filter tanggal & outlet (`?store`), kolom Outlet, paginasi; refresh tiap 30 detik | `GET /v1/admin/orders?store_id=` |
 | `/orders/[id]` | Detail pesanan | Rincian item & total, pelanggan, alamat, riwayat status (siapa & alasan); tombol **Tandai sukses**, **Tandai gagal**, majukan status, **Batalkan** | `GET /v1/admin/orders/{id}`, `PATCH /v1/admin/orders/{id}/status` |
-| `/products` | Produk & harga | **Tambah menu** (nama, kategori, harga, deskripsi, URL foto + pratinjau, varian + tambahan harga, stok, label terlaris); ubah semua field itu; switch stok tersedia–habis; harga yang dibayar pelanggan (promo) | `GET/POST /v1/admin/products`, `PATCH /v1/admin/products/{id}`, `GET /v1/categories` |
+| `/products` | Produk & harga | **Tambah menu** (nama, kategori, harga, deskripsi, URL foto + pratinjau, varian + tambahan harga, stok, label terlaris); ubah semua field itu; switch stok tersedia–habis; harga yang dibayar pelanggan (promo). Pilih outlet (`?store`) → switch stok **khusus outlet itu** | `GET/POST /v1/admin/products`, `PATCH /v1/admin/products/{id}`, `PUT /v1/admin/stores/{id}/products/{product_id}`, `GET /v1/categories` |
+| `/stores` | Outlet | Kartu per outlet: status (buka / tutup sesuai jam / tutup sementara / nonaktif), jam buka, radius antar, menu habis, pesanan & omzet hari ini; **Tambah outlet**, ubah (24 jam, lewat tengah malam), tombol **Tutup sementara** | `GET/POST /v1/admin/stores`, `PATCH /v1/admin/stores/{id}` |
 | `/promos` | Promo | Buat / ubah / nonaktifkan / hapus promo, tandai popup Beranda | `GET/POST /v1/admin/deals`, `PATCH/DELETE /v1/admin/deals/{id}` |
 | `/customers` | Pelanggan | Daftar akun + jumlah pesanan + total belanja sukses | `GET /v1/admin/customers` |
 | `/activity` | Aktivitas | Audit log semua perubahan dari web admin | `GET /v1/admin/audit-logs` |
@@ -89,6 +90,20 @@ PENDING → PAID → PROCESSING → DELIVERING → COMPLETED (Sukses)
 - Mengirim `options` = daftar varian diganti seluruhnya; `[]` = tanpa varian.
 - Foto berupa URL https (mis. Unsplash atau CDN sendiri). Upload file belum ada (lihat roadmap).
 - Menu tidak bisa dihapus karena riwayat pesanan merujuk ke menu itu. Untuk menyembunyikannya, matikan stok.
+
+**Multi-outlet** (API_PLAN.md §5.26).
+
+- Harga menu sama di semua outlet, jadi harga hanya diubah di "Stok pusat (semua outlet)".
+- Per outlet yang diatur: stok menu, jam buka, radius antar, dan tutup sementara.
+- Stok pusat "habis" mengalahkan stok outlet: menu habis di semua outlet.
+- Di halaman Menu dengan outlet terpilih, switch stok mengubah stok outlet itu saja.
+- Jam buka: `HH:MM` WIB. Jam buka = jam tutup berarti 24 jam (switch "Buka 24 jam"); jam tutup lebih awal dari jam buka berarti lewat tengah malam.
+- Layer:
+  - `domain/store/Store.ts` (`storeStatus`, `isClock`, `MAX_RADIUS_KM`);
+  - `application/store/storeUseCases.ts` (validasi + simpan, tutup sementara, stok);
+  - `infrastructure/repositories/HttpStoreRepository.ts`;
+  - `presentation/hooks/useStores.ts`;
+  - `presentation/features/stores/*` (`StoresView`, `StoreFormDialog`, `StoreSelect` yang dipakai Menu, Pesanan & Dashboard).
 
 ---
 
@@ -1169,6 +1184,7 @@ Detail kontrak ada di `trytuist-api/API_PLAN.md` §5.25.
 - **`order.Service.AdminSetStatus`:** aturan transisi admin, alasan wajib untuk gagal/batal, voucher & `sold_count` dikembalikan.
 - **Seed:** akun `admin@trytuist.com / admin12345` (role ADMIN).
 - **Tes:** integration test `TestAdmin` (role, filter, transisi, dashboard, harga, promo, audit) lolos bersama semua tes lama.
+- **Migrasi `0008_multi_outlet`** (jam buka, radius, aktif, urutan outlet; tabel `store_product_availability`) + `internal/admin/stores.go`, filter `store_id` di pesanan, produk, dashboard (`by_store`). Tes `TestMultiOutlet`.
 
 ---
 
@@ -1218,7 +1234,9 @@ Masuk dengan `admin@trytuist.com` / `admin12345`. Akun pelanggan biasa (`kholis@
 - [x] Pelanggan & audit log
 - [ ] Ekspor CSV pesanan & laporan penjualan
 - [ ] Notifikasi pesanan baru (SSE / polling + suara) di halaman Pesanan
-- [ ] Kelola kategori, banner, voucher, outlet (buka/tutup)
+- [x] Outlet: tambah, jam buka, radius antar, tutup sementara, stok per outlet, filter outlet di Pesanan & Dashboard
+- [ ] Kelola kategori, banner, voucher
+- [ ] Akun staf per outlet (hanya melihat pesanan outletnya)
 - [ ] Pembelian bahan baku ke supplier: stok & HPP, untuk laba kotor di dashboard
 - [ ] Peran admin bertingkat (owner / kasir) dan 2FA
 - [ ] E2E test Playwright di CI

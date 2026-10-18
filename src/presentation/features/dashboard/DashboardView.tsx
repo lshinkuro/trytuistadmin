@@ -12,30 +12,44 @@ import { Card, CardContent, CardHeader, CardTitle, Skeleton } from "../../compon
 import { useDashboard } from "../../hooks/useDashboard";
 import { PAYMENT_LABEL } from "../orders/OrderStatusBadge";
 import { DailyBarChart } from "./DailyBarChart";
+import { StoreSelect } from "../stores/StoreSelect";
 import { DateRangeControl, presetRanges } from "./DateRangeControl";
 import { StatusRail } from "./StatusRail";
 
-function useRangeParam(): [DateRange, (r: DateRange) => void] {
+/** Rentang tanggal & outlet disimpan di URL (?from&to&store) supaya bisa dibagikan. */
+function useDashboardParams() {
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
   const fallback = presetRanges().find((p) => p.key === "30d")!.range;
   const candidate = { from: params.get("from") ?? fallback.from, to: params.get("to") ?? fallback.to };
   const range = validateDateRange(candidate) ? fallback : candidate;
-  const setRange = (r: DateRange) => router.replace(`${pathname}?from=${r.from}&to=${r.to}`, { scroll: false });
-  return [range, setRange];
+  const storeId = params.get("store") ?? "";
+  const go = (r: DateRange, store: string) =>
+    router.replace(`${pathname}?from=${r.from}&to=${r.to}${store ? `&store=${store}` : ""}`, { scroll: false });
+  return {
+    range,
+    storeId,
+    setRange: (r: DateRange) => go(r, storeId),
+    setStoreId: (store: string) => go(range, store),
+  };
 }
 
 export function DashboardView() {
-  const [range, setRange] = useRangeParam();
-  const dashboard = useDashboard(range);
+  const { range, storeId, setRange, setStoreId } = useDashboardParams();
+  const dashboard = useDashboard(range, storeId);
 
   return (
     <>
       <PageHeader
         title="Dashboard"
         description="Penjualan dihitung dari pesanan yang sukses. Pembelian menghitung semua transaksi pelanggan, termasuk yang masih jalan, gagal, dan batal."
-        actions={<DateRangeControl value={range} onChange={setRange} />}
+        actions={
+          <>
+            <StoreSelect value={storeId} onChange={setStoreId} className="h-9 w-48" />
+            <DateRangeControl value={range} onChange={setRange} />
+          </>
+        }
       />
       {dashboard.isError && <ErrorState error={dashboard.error} onRetry={() => dashboard.refetch()} />}
       {dashboard.isPending && (
@@ -46,8 +60,9 @@ export function DashboardView() {
       )}
       {dashboard.data && (
         <div className={cn("flex flex-col gap-6 transition-opacity", dashboard.isPlaceholderData && "opacity-60")}>
-          <StatusRail byStatus={dashboard.data.byStatus} range={dashboard.data.range} />
+          <StatusRail byStatus={dashboard.data.byStatus} range={dashboard.data.range} storeId={storeId} />
           <SalesAndPurchases data={dashboard.data} />
+          {!storeId && dashboard.data.byStore.length > 1 && <StoreComparison data={dashboard.data} onSelect={setStoreId} />}
           <div className="grid gap-6 lg:grid-cols-2">
             <TopProducts data={dashboard.data} />
             <PaymentMix data={dashboard.data} />
@@ -155,6 +170,51 @@ function BarList({ rows }: { rows: { key: string; label: string; value: number; 
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Perbandingan outlet: panjang batang = penjualan; klik baris = lihat dashboard outlet itu. */
+function StoreComparison({ data, onSelect }: { data: Dashboard; onSelect: (storeId: string) => void }) {
+  const max = Math.max(1, ...data.byStore.map((s) => s.revenue));
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Perbandingan outlet</CardTitle>
+      </CardHeader>
+      <CardContent className="overflow-x-auto">
+        <table className="tabular w-full min-w-[34rem] text-sm">
+          <thead>
+            <tr className="text-left text-xs text-ink-muted">
+              <th className="pb-2 font-semibold">Outlet</th>
+              <th className="pb-2 font-semibold">Penjualan</th>
+              <th className="pb-2 text-right font-semibold">Transaksi</th>
+              <th className="pb-2 text-right font-semibold">Tingkat sukses</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {data.byStore.map((s) => (
+              <tr key={s.storeId}>
+                <td className="py-2.5 pr-4">
+                  <button type="button" onClick={() => onSelect(s.storeId)} className="font-semibold hover:text-brand hover:underline">
+                    {s.storeName}
+                  </button>
+                </td>
+                <td className="w-1/2 py-2.5 pr-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-2 flex-1 rounded-full bg-neutral-soft" aria-hidden>
+                      <div className="h-2 rounded-full bg-chart-sales" style={{ width: `${(s.revenue / max) * 100}%` }} />
+                    </div>
+                    <span className="w-28 shrink-0 text-right font-semibold">{formatRupiah(s.revenue)}</span>
+                  </div>
+                </td>
+                <td className="py-2.5 text-right">{formatNumber(s.orders)}</td>
+                <td className="py-2.5 text-right">{s.orders > 0 ? `${s.successRatePct.toLocaleString("id-ID")}%` : "–"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </CardContent>
+    </Card>
   );
 }
 

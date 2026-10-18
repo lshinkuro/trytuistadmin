@@ -5,7 +5,8 @@ import type { UserFilter } from "@/domain/user/User";
 
 export const queryKeys = {
   admin: ["admin", "me"] as const,
-  dashboard: (range: DateRange) => ["dashboard", range] as const,
+  dashboard: (range: DateRange, storeId: string) => ["dashboard", range, storeId] as const,
+  stores: ["stores"] as const,
   orders: (filter: OrderFilter) => ["orders", "list", filter] as const,
   order: (id: string) => ["orders", "detail", id] as const,
   products: (filter: ProductFilter) => ["products", filter] as const,
