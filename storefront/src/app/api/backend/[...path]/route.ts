@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { isAllowed } from "@/infrastructure/server/allowlist";
 import { callBackend, refreshSession } from "@/infrastructure/server/backend";
-import { isSameOrigin } from "@/infrastructure/server/origin";
+import { clientIp, isSameOrigin } from "@/infrastructure/server/origin";
 import {
   ACCESS_COOKIE,
   REFRESH_COOKIE,
@@ -30,12 +30,13 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] 
     const v = req.headers.get(h);
     if (v) extra[h] = v;
   }
+  const ip = clientIp(req);
   const refreshToken = req.cookies.get(REFRESH_COOKIE)?.value;
   let accessToken = req.cookies.get(ACCESS_COOKIE)?.value;
   let refreshed: BackendSession | null = null;
 
   if (!accessToken && refreshToken) {
-    refreshed = await refreshSession(refreshToken);
+    refreshed = await refreshSession(refreshToken, ip);
     accessToken = refreshed?.access_token;
   }
   const call = (token?: string) =>
@@ -45,11 +46,12 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] 
       accessToken: token,
       search: req.nextUrl.search,
       headers: extra,
+      clientIp: ip,
     });
 
   let result = await call(accessToken);
   if (result.status === 401 && refreshToken && !refreshed) {
-    refreshed = await refreshSession(refreshToken);
+    refreshed = await refreshSession(refreshToken, ip);
     if (refreshed) result = await call(refreshed.access_token);
   }
 

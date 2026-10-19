@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { callBackend } from "@/infrastructure/server/backend";
-import { isSameOrigin } from "@/infrastructure/server/origin";
+import { clientIp, isSameOrigin } from "@/infrastructure/server/origin";
 import { setSessionCookies, type BackendSession } from "@/infrastructure/server/session";
 
 // Daftar = POST /v1/auth/register (201 + sesi), langsung masuk.
@@ -9,6 +9,7 @@ export async function POST(req: NextRequest) {
   const input = (await req.json().catch(() => null)) as { name?: string; email?: string; password?: string } | null;
   const result = await callBackend("/v1/auth/register", {
     method: "POST",
+    clientIp: clientIp(req),
     body: { name: input?.name ?? "", email: input?.email ?? "", password: input?.password ?? "" },
   });
   const session = (result.body as { data?: BackendSession } | null)?.data;

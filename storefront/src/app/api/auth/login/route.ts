@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { callBackend, sessionFrom } from "@/infrastructure/server/backend";
-import { isSameOrigin } from "@/infrastructure/server/origin";
+import { clientIp, isSameOrigin } from "@/infrastructure/server/origin";
 import { setSessionCookies } from "@/infrastructure/server/session";
 
 // Login pembeli: POST /v1/auth/login yang sama dengan app iOS. Token disimpan di cookie httpOnly.
@@ -9,6 +9,7 @@ export async function POST(req: NextRequest) {
   const credentials = (await req.json().catch(() => null)) as { email?: string; password?: string } | null;
   const login = await callBackend("/v1/auth/login", {
     method: "POST",
+    clientIp: clientIp(req),
     body: { email: credentials?.email ?? "", password: credentials?.password ?? "" },
   });
   const session = sessionFrom(login);

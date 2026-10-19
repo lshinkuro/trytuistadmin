@@ -15,12 +15,15 @@ interface CallOptions {
   search?: string;
   /** Header tambahan (mis. Idempotency-Key checkout). */
   headers?: Record<string, string>;
+  /** IP pembeli: rate limit backend per IP berlaku per pembeli, bukan per server storefront. */
+  clientIp?: string;
 }
 
 /** Satu-satunya tempat yang memanggil backend Go (dengan API key). */
 export async function callBackend(path: string, opts: CallOptions = {}): Promise<BackendResult> {
   const headers: Record<string, string> = { ...opts.headers, Accept: "application/json", "X-API-Key": serverEnv.apiKey };
   if (opts.accessToken) headers.Authorization = `Bearer ${opts.accessToken}`;
+  if (opts.clientIp) headers["X-Forwarded-For"] = opts.clientIp;
   const payload = opts.rawBody ?? (opts.body === undefined ? undefined : JSON.stringify(opts.body));
   if (payload !== undefined) headers["Content-Type"] = "application/json";
   try {
@@ -54,12 +57,12 @@ export function sessionFrom(result: BackendResult): BackendSession | null {
 const inflight = new Map<string, { promise: Promise<BackendSession | null>; at: number }>();
 const SHARE_MS = 10_000;
 
-export function refreshSession(refreshToken: string): Promise<BackendSession | null> {
+export function refreshSession(refreshToken: string, clientIp?: string): Promise<BackendSession | null> {
   const now = Date.now();
   for (const [key, entry] of inflight) if (now - entry.at > SHARE_MS) inflight.delete(key);
   const existing = inflight.get(refreshToken);
   if (existing) return existing.promise;
-  const promise = callBackend("/v1/auth/refresh", { method: "POST", body: { refresh_token: refreshToken } }).then(
+  const promise = callBackend("/v1/auth/refresh", { method: "POST", body: { refresh_token: refreshToken }, clientIp }).then(
     sessionFrom,
   );
   inflight.set(refreshToken, { promise, at: now });
