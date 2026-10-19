@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [{ protocol: "https", hostname: "images.unsplash.com" }],
   },
+  // Hanya mode dev: izinkan dibuka dari HP lewat IP Wi-Fi laptop (mis. http://192.168.18.13:3001).
+  allowedDevOrigins: ["192.168.*.*", "172.*.*.*", "10.*.*.*", "*.local"],
 };
 
 export default nextConfig;

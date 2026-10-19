@@ -8,11 +8,9 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [{ protocol: "https", hostname: "images.unsplash.com" }],
   },
+  // Hanya mode dev: izinkan dibuka dari HP lewat IP Wi-Fi laptop (mis. http://192.168.18.13:3000).
+  // Tanpa ini Next memblokir JavaScript dev (403) sehingga halaman tidak interaktif.
+  allowedDevOrigins: ["192.168.*.*", "172.*.*.*", "10.*.*.*", "*.local"],
 };
-
-// next.config.js
-module.exports = {
-  allowedDevOrigins: ['172.20.10.3'],
-}
 
 export default nextConfig;
