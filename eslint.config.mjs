@@ -13,7 +13,7 @@ const layer = (files, forbidden, message) => ({
 const config = [
   ...nextVitals,
   ...nextTs,
-  { ignores: [".next/**", "node_modules/**", "next-env.d.ts"] },
+  { ignores: [".next/**", "node_modules/**", "next-env.d.ts", "storefront/**"] },
   layer(
     ["src/domain/**"],
     ["@/application/*", "@/infrastructure/*", "@/presentation/*", "@/app/*", "react", "react-dom", "next", "next/*"],

@@ -87,3 +87,10 @@ Tidak ada perubahan backend. Semua endpoint di §2 sudah tersedia dan teruji. Bi
 ## 7. Di luar cakupan v1
 
 Google Sign-In, push notification web, PWA/offline, hapus akun, deeplink QR outlet, multi-bahasa, deploy storefront (nanti ditambahkan ke `deploy/` di repo API seperti web admin).
+
+## 8. Status (20 Okt 2026)
+
+Selesai: §1–§3 dan urutan kerja §5 langkah 1–7. `npm run check` (15 test) & `npm run build` hijau; tidak ada API key di bundle browser. Uji ujung ke ujung lewat BFF ke API lokal: login, quote (ongkir per jarak + ETA), checkout COD + retry Idempotency-Key, batal, logout, proxy menolak `/v1/admin/*` (404) & Origin asing (403).
+
+Belum: Bayar Online belum dicoba dengan akun Midtrans sandbox sungguhan; tampilan belum diuji di banyak ukuran layar; deploy storefront.
+

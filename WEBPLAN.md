@@ -1237,6 +1237,8 @@ Masuk dengan `admin@trytuist.com` / `admin12345`. Akun pelanggan biasa (`kholis@
 - [x] Pembayaran (Midtrans): daftar & filter, detail + event Midtrans, refund penuh / sebagian / manual (super admin); info pembayaran, jarak & ETA di detail pesanan (`/payments`, API_PLAN §5.27.11)
 - [x] Ongkir (super admin): atur tarif dasar, per km, maksimal, gratis ongkir, estimasi waktu antar; contoh perhitungan & simulasi dari server (`/delivery`, API_PLAN §7)
 - [ ] Deploy web admin (belum masuk `deploy/` di repo API)
+- [x] Web pembeli (storefront) di `storefront/`: katalog per outlet, combo, keranjang + quote server, kupon, checkout COD & Midtrans, pesanan (batal, pesan lagi, refund, struk), alamat — lihat STOREFRONT_PLAN.md
+- [ ] Deploy storefront
 - [x] Produk: tambah menu baru (kategori, foto, varian), ubah harga, varian, stok, nama, deskripsi, label terlaris
 - [ ] Upload foto menu langsung dari web (storage/CDN), arsip menu
 - [x] Promo: CRUD, nonaktifkan, popup Beranda
