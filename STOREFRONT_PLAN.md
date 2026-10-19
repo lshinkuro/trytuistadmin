@@ -3,7 +3,7 @@
 Web untuk **pembeli**: login/daftar, pilih outlet, lihat menu, keranjang, checkout (COD & Bayar Online Midtrans), dan riwayat pesanan, **sama seperti aplikasi iOS**. Tujuannya supaya pelanggan bisa memesan tanpa menunggu rilis app.
 
 - Lokasi kode: folder **`storefront/`** di repo `trytuistadmin`. Aplikasi Next.js terpisah dengan `package.json` sendiri, **tidak** mengubah web admin di `src/`.
-- Backend: `trytuist-api` yang sama. Kontrak API ada di `trytuist-api/API_PLAN.md` dan Swagger `GET /docs` (dev/staging).
+- Backend: `trytuist-api` yang sama, **tanpa perubahan**. Storefront murni integrasi ke endpoint yang sudah ada. Kontrak API ada di `trytuist-api/API_PLAN.md` dan Swagger `GET /docs` (dev/staging).
 - Bahasa UI: Indonesia. Mobile-first, karena kebanyakan pembeli memakai HP.
 
 ---
@@ -52,8 +52,8 @@ storefront/
 | Menu & detail | `GET /v1/products?store_id=&category_id=&q=`, `GET /v1/products/{id}?store_id=` | Tampilkan `combo` (isi + hemat), harga coret bila `original_price`, label Habis bila `is_available=false` |
 | Keranjang | lokal (localStorage per user id) | Sama seperti iOS: harga **selalu** dari `POST /v1/orders/quote` (ongkir per jarak, `free_delivery`, jarak & ETA). Tombol bayar nonaktif sampai quote berhasil |
 | Alamat & bayar | `GET/POST/PATCH/DELETE /v1/me/addresses`, `GET /v1/me/payment-methods` | Alamat baru: isi `lat/lng` dari geolocation browser bila diizinkan (dipakai ongkir per jarak) |
-| Checkout | `POST /v1/checkout` + `Idempotency-Key` (uuid, dipakai ulang saat retry) | COD → `next: ORDER` → ke `/pesanan/[id]`. Online → `next: PAYMENT` → redirect ke `payment.redirect_url` (Snap) |
-| Status bayar | `GET /v1/payments/{id}`, `POST /v1/payments/{id}/cancel` | Polling tiap 3 detik sampai final; PAID → `/pesanan/[order.id]` |
+| Checkout | `POST /v1/checkout` + `Idempotency-Key` (uuid, dipakai ulang saat retry) | COD → `next: ORDER` → ke `/pesanan/[id]`. Online → `next: PAYMENT` → ke `/bayar/[payment.id]` |
+| Status bayar | `GET /v1/payments/{id}`, `POST /v1/payments/{id}/cancel`, `GET /v1/payments?status=PENDING` | Halaman `/bayar/[id]`: tombol "Bayar sekarang" membuka `redirect_url` (Snap) di **tab baru**; tab storefront polling tiap 3 detik sampai final (backend sendiri ikut cek ke Midtrans saat PENDING). PAID → `/pesanan/[order.id]`; gagal/kedaluwarsa → pesan + kembali ke keranjang. Tab Snap selesai di halaman "kembali" milik backend, yang tidak masalah karena tab storefront sudah berpindah sendiri |
 | Pesanan | `GET /v1/orders`, `/v1/orders/{id}`, `POST /cancel`, `POST /rating` | Tampilkan `refund`, `free_delivery_coupon`, `bundle_items`, ETA. Struk = halaman print-friendly (`window.print()`) |
 | Akun | `GET/PATCH /v1/me` | Hapus akun di luar cakupan |
 
@@ -63,31 +63,26 @@ storefront/
 - Cookie `HttpOnly; SameSite=Lax; Secure` (production). Route POST memeriksa header `Origin` = `STOREFRONT_PUBLIC_URL` (CSRF).
 - Harga & total tidak pernah dihitung di browser. Yang ditampilkan dan dibayar adalah hasil quote/checkout dari server.
 
-## 4. Perubahan kecil di backend (`trytuist-api`), kerjakan lebih dulu
+## 4. Backend
 
-**Finish URL Midtrans untuk web.** Sekarang `callbacks.finish` Snap selalu `PUBLIC_BASE_URL/v1/payments/finish` (halaman "kembali ke aplikasi"). Untuk web:
-
-- `POST /v1/checkout` menerima field opsional `finish_url`. Dipakai hanya bila origin-nya ada di env baru `WEB_FINISH_ORIGINS` (dipisah koma, mis. `http://localhost:3001,https://shop.trytuist.id`); selain itu diabaikan dan memakai default.
-- Storefront mengirim `finish_url = {STOREFRONT_PUBLIC_URL}/bayar/{payment_id}` apa adanya (dengan placeholder). Id sesi baru diketahui setelah insert, jadi server mengganti `{payment_id}` dengan id sesi sebelum membuat transaksi Snap. Snap menambahkan `?order_id=…` sendiri.
-- Test integration: origin di allowlist dipakai di request Snap (fake Midtrans menyimpan request), origin lain diabaikan. Dokumentasikan di `docs/openapi.yaml` (test `TestOpenAPICoversRoutes` tetap hijau) dan `API_PLAN.md` §5.27 (sinkronkan salinan di repo iOS).
+Tidak ada perubahan backend. Semua endpoint di §2 sudah tersedia dan teruji. Bila menemukan kebutuhan yang benar-benar tidak bisa dipenuhi API, **jangan** ubah `trytuist-api`: catat di §8 Status untuk dikerjakan terpisah.
 
 ## 5. Urutan kerja (setiap langkah: kode + test + `npm run check` hijau)
 
-1. **Backend §4**: `finish_url` + `WEB_FINISH_ORIGINS` + test + Swagger. `make lint && make test` di `trytuist-api`.
-2. **Kerangka `storefront/`**: package.json (versi sama dengan admin), Tailwind/tema (salin token warna admin), ESLint layer, Vitest, layout mobile-first (header outlet + ikon keranjang, bottom nav: Beranda · Menu · Pesanan · Akun).
-3. **Auth BFF**: login/daftar/logout + refresh otomatis + `proxy.ts` (halaman keranjang/pesanan/akun wajib login; menu boleh tanpa login).
-4. **Katalog**: pilih outlet, Beranda, Menu, Detail (varian, combo, catatan, jumlah 1–20 dari `app-config.order_rules`).
-5. **Keranjang + checkout**: quote (debounce 300 ms, versi request terakhir menang), alamat, metode bayar, kupon gratis ongkir, COD, Bayar Online + halaman `/bayar/[id]`.
-6. **Pesanan**: daftar, detail (batal, pesan lagi, refund, struk print), rating.
-7. **Akun**: profil, alamat CRUD, logout.
-8. Dokumentasi: `storefront/README.md` (cara jalan: `cd storefront && npm i && npm run dev`), update `WEBPLAN.md` (§13 roadmap) & `API_PLAN.md` (§10 roadmap: "Web pembeli (storefront)").
+1. **Kerangka `storefront/`**: package.json (versi sama dengan admin), Tailwind/tema (salin token warna admin), ESLint layer, Vitest, layout mobile-first (header outlet + ikon keranjang, bottom nav: Beranda · Menu · Pesanan · Akun).
+2. **Auth BFF**: login/daftar/logout + refresh otomatis + `proxy.ts` (halaman keranjang/pesanan/akun wajib login; menu boleh tanpa login).
+3. **Katalog**: pilih outlet, Beranda, Menu, Detail (varian, combo, catatan, jumlah 1–20 dari `app-config.order_rules`).
+4. **Keranjang + checkout**: quote (debounce 300 ms, versi request terakhir menang), alamat, metode bayar, kupon gratis ongkir, COD, Bayar Online + halaman `/bayar/[id]`.
+5. **Pesanan**: daftar, detail (batal, pesan lagi, refund, struk print), rating.
+6. **Akun**: profil, alamat CRUD, logout.
+7. Dokumentasi: `storefront/README.md` (cara jalan: `cd storefront && npm i && npm run dev`), update `WEBPLAN.md` (§13 roadmap: "Web pembeli (storefront)").
 
 ## 6. Definition of done
 
-- `cd storefront && npm run check` (typecheck + lint + test) dan `npm run build` hijau. `trytuist-api`: `make lint && make test` hijau.
+- `cd storefront && npm run check` (typecheck + lint + test) dan `npm run build` hijau; web admin lama tetap lulus `npm run check`.
 - Alur manual di dev (API lokal + akun demo `kholis@gmail.com / 12345678`): pilih outlet → tambah 2 menu (1 combo) → keranjang menampilkan ongkir & ETA dari server → checkout COD → pesanan muncul di `/pesanan` dan di web admin.
 - Tidak ada `X-API-Key` / token di bundle browser (`grep` hasil build).
-- Commit terpisah per repo dengan pesan jelas, lalu push ke `main` (cara kerja repo ini).
+- Commit dengan pesan jelas, lalu push ke `main` (cara kerja repo ini).
 
 ## 7. Di luar cakupan v1
 
