@@ -30,11 +30,11 @@ export function useSetStoreTempClosed() {
   return useMutation({ mutationFn: setStoreTempClosed, onSuccess });
 }
 
-export function useSetStoreStock() {
-  const { setStoreStock } = useDependencies();
+export function useSetStoreProduct() {
+  const { setStoreProduct } = useDependencies();
   const client = useQueryClient();
   return useMutation({
-    mutationFn: setStoreStock,
+    mutationFn: setStoreProduct,
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["products"] });
       void client.invalidateQueries({ queryKey: queryKeys.stores });

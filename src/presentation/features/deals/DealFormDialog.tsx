@@ -5,8 +5,10 @@ import { discountPercent, type Deal, type DealInput } from "@/domain/deal/Deal";
 import { AppError } from "@/domain/shared/errors";
 import { formatRupiah, fromDateTimeLocal, toDateTimeLocal } from "@/shared/lib/format";
 import { Button, Dialog, Field, Input, Select, Switch } from "../../components/ui";
+import { useCurrentAdmin } from "../../hooks/useAuth";
 import { useSaveDeal } from "../../hooks/useDeals";
 import { useProducts } from "../../hooks/useProducts";
+import { StoreSelect } from "../stores/StoreSelect";
 
 interface FormState {
   productId: string;
@@ -20,6 +22,8 @@ interface FormState {
   isActive: boolean;
   showAsPopup: boolean;
   sortOrder: string;
+  /** "" = semua outlet. */
+  storeId: string;
 }
 
 function initialState(deal: Deal | null): FormState {
@@ -36,19 +40,25 @@ function initialState(deal: Deal | null): FormState {
     isActive: deal?.isActive ?? true,
     showAsPopup: deal?.showAsPopup ?? false,
     sortOrder: String(deal?.sortOrder ?? 0),
+    storeId: deal?.store?.id ?? "",
   };
 }
 
 export function DealFormDialog({ deal, onClose }: { deal: Deal | null; onClose: () => void }) {
   const [form, setForm] = useState(() => initialState(deal));
-  const products = useProducts({ query: "", categoryId: "", availability: "all", storeId: "" });
+  // Admin outlet: promo selalu untuk outletnya (backend memaksa); super admin memilih outlet / semua outlet.
+  const outlet = useCurrentAdmin().data?.store ?? null;
+  const storeId = outlet?.id ?? form.storeId;
+  const products = useProducts({ query: "", categoryId: "", availability: "all", storeId });
   const save = useSaveDeal();
   const errors = save.error instanceof AppError ? save.error.fieldErrors : {};
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
 
   const product = useMemo(() => products.data?.find((p) => p.id === form.productId) ?? null, [products.data, form.productId]);
+  // Promo outlet dibandingkan dengan harga di outlet itu (bisa harga khusus outlet).
+  const normalPrice = product ? (product.store?.price ?? product.price) : null;
   const dealPrice = Number(form.dealPrice || 0);
-  const pct = product ? discountPercent(product.price, dealPrice) : 0;
+  const pct = normalPrice ? discountPercent(normalPrice, dealPrice) : 0;
 
   const submit = () => {
     const input: DealInput = {
@@ -63,8 +73,9 @@ export function DealFormDialog({ deal, onClose }: { deal: Deal | null; onClose: 
       isActive: form.isActive,
       showAsPopup: form.showAsPopup,
       sortOrder: Number(form.sortOrder || 0),
+      ...(outlet ? {} : { storeId: form.storeId }),
     };
-    save.mutate({ id: deal?.id, input, normalPrice: product?.price ?? null }, { onSuccess: onClose });
+    save.mutate({ id: deal?.id, input, normalPrice }, { onSuccess: onClose });
   };
 
   return (
@@ -86,21 +97,30 @@ export function DealFormDialog({ deal, onClose }: { deal: Deal | null; onClose: 
       }
     >
       <div className="grid gap-4 sm:grid-cols-2">
+        {outlet ? (
+          <p className="text-sm text-ink-muted sm:col-span-2">Promo ini hanya berlaku di {outlet.name}.</p>
+        ) : (
+          <Field label="Berlaku di" error={errors.storeId} className="sm:col-span-2">
+            <StoreSelect value={form.storeId} onChange={(id) => set("storeId", id)} allLabel="Semua outlet" className="w-full" />
+          </Field>
+        )}
         <Field label="Produk" error={errors.productId} className="sm:col-span-2">
           <Select value={form.productId} onChange={(e) => set("productId", e.target.value)}>
             <option value="">Pilih produk…</option>
-            {products.data?.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} · {formatRupiah(p.price)}
-                {p.isAvailable ? "" : " (habis)"}
-              </option>
-            ))}
+            {products.data
+              ?.filter((p) => !p.store || p.store.isListed)
+              .map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} · {formatRupiah(p.store?.price ?? p.price)}
+                  {(p.store?.isAvailable ?? p.isAvailable) ? "" : " (habis)"}
+                </option>
+              ))}
           </Select>
         </Field>
         <Field
           label="Harga promo (Rp)"
           error={errors.dealPrice}
-          hint={product ? (pct > 0 ? `Hemat ${pct}% dari ${formatRupiah(product.price)}` : `Harus di bawah ${formatRupiah(product.price)}`) : undefined}
+          hint={normalPrice ? (pct > 0 ? `Hemat ${pct}% dari ${formatRupiah(normalPrice)}` : `Harus di bawah ${formatRupiah(normalPrice)}`) : undefined}
         >
           <Input inputMode="numeric" className="tabular" value={form.dealPrice} onChange={(e) => set("dealPrice", e.target.value.replace(/\D/g, ""))} />
         </Field>

@@ -46,11 +46,87 @@ export interface AdminOrderDTO {
     quantity: number;
     note: string;
     subtotal: number;
+    bundle_items?: { product_name: string; option_name: string | null; quantity: number }[];
   }[];
   status_history: { status: string; at: string; note: string | null; changed_by: string | null }[];
   rating: { rating: number; comment: string | null } | null;
   customer: CustomerDTO;
   next_statuses: string[];
+  free_delivery_coupon?: boolean;
+  delivery_fee_waived?: number;
+  distance_km?: number | null;
+  eta_min_minutes?: number | null;
+  eta_max_minutes?: number | null;
+  /** null untuk COD. */
+  payment?: {
+    id: string;
+    provider_order_id: string;
+    status: string;
+    payment_type: string | null;
+    refund_status: string | null;
+    paid_at: string | null;
+  } | null;
+}
+
+export interface PaymentOrderRefDTO {
+  id: string;
+  order_number: string;
+  status: string;
+}
+
+export interface AdminPaymentSummaryDTO {
+  id: string;
+  provider_order_id: string;
+  status: string;
+  amount: number;
+  refunded_amount: number;
+  refund_status: string | null;
+  payment_type: string | null;
+  store_id: string;
+  store_name: string;
+  customer: CustomerDTO;
+  order: PaymentOrderRefDTO | null;
+  created_at: string;
+  paid_at: string | null;
+  expires_at: string;
+}
+
+export interface AdminPaymentDTO {
+  id: string;
+  provider_order_id: string;
+  provider_txn_id: string | null;
+  status: string;
+  amount: number;
+  expires_at: string;
+  payment_type: string | null;
+  paid_at: string | null;
+  status_message: string | null;
+  refund_status: string | null;
+  store: { id: string; name: string };
+  quote: {
+    subtotal: number;
+    delivery_fee: number;
+    discount: number;
+    total: number;
+    items: { product_name: string; option_name: string | null; quantity: number; subtotal: number }[];
+  };
+  order: PaymentOrderRefDTO | null;
+  created_at: string;
+  customer: CustomerDTO;
+  refunded_amount: number;
+  refundable_amount: number;
+  can_refund_online: boolean;
+  refunds: {
+    id: string;
+    amount: number;
+    reason: string;
+    method: string;
+    status: string;
+    message: string | null;
+    admin_name: string | null;
+    created_at: string;
+  }[];
+  events: { source: string; provider_status: string | null; signature_ok: boolean | null; payload: unknown; created_at: string }[];
 }
 
 export interface AdminProductDTO {
@@ -68,9 +144,26 @@ export interface AdminProductDTO {
   is_available: boolean;
   is_best_seller: boolean;
   options: { id: string; name: string; extra_price: number }[];
+  bundle_items?: {
+    product_id: string;
+    product_name: string;
+    option_id: string | null;
+    option_name: string | null;
+    quantity: number;
+    unit_price: number;
+  }[];
+  separate_price?: number;
   updated_at: string;
-  store_available?: boolean;
-  store_sold_out?: boolean;
+  store?: {
+    store_id: string;
+    is_listed: boolean;
+    is_sold_out: boolean;
+    stock: number | null;
+    price: number | null;
+    deal_price: number | null;
+    effective_price: number;
+    is_available: boolean;
+  };
 }
 
 export interface CategoryDTO {
@@ -96,6 +189,9 @@ export interface DealDTO {
   show_as_popup: boolean;
   sort_order: number;
   status: string;
+  store_id: string | null;
+  store_name: string | null;
+  can_edit: boolean;
 }
 
 export interface DashboardDTO {
@@ -145,6 +241,7 @@ export interface AdminStoreDTO {
   is_open_now: boolean;
   sort_order: number;
   unavailable_products: number;
+  listed_products: number;
   today: { orders: number; revenue: number; active: number };
 }
 
@@ -166,6 +263,8 @@ export interface AdminMeDTO {
   name: string;
   email: string;
   role: string;
+  store_id: string | null;
+  store_name: string | null;
 }
 
 export interface AuditLogDTO {
@@ -176,4 +275,38 @@ export interface AuditLogDTO {
   summary: string;
   admin_name: string | null;
   created_at: string;
+}
+
+export interface DeliverySettingsDTO {
+  delivery_fee: number;
+  delivery_base_km: number;
+  delivery_fee_per_km: number;
+  delivery_fee_max: number;
+  free_delivery_min_subtotal: number;
+  prep_minutes: number;
+  courier_speed_kmh: number;
+  free_delivery_coupon_enabled: boolean;
+  free_delivery_coupon_weekly: number;
+}
+
+export interface DeliverySettingsResponseDTO {
+  settings: DeliverySettingsDTO;
+  examples: { distance_km: number; delivery_fee: number; eta_min_minutes: number; eta_max_minutes: number }[];
+  updated_at?: string | null;
+}
+
+export interface AdminBannerDTO {
+  id: string;
+  title: string;
+  subtitle: string;
+  image_url: string;
+  action_type: string;
+  action_value: string | null;
+  action_label: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  sort_order: number;
+  is_active: boolean;
+  status: string;
+  updated_at: string;
 }

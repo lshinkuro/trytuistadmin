@@ -21,4 +21,4 @@ export function OrderStatusBadge({ status }: { status: OrderStatus }) {
   );
 }
 
-export const PAYMENT_LABEL = { COD: "Bayar di tempat", QRIS: "QRIS", EWALLET: "E-wallet" } as const;
+export const PAYMENT_LABEL = { COD: "Bayar di tempat", QRIS: "QRIS", EWALLET: "E-wallet", ONLINE: "Bayar online" } as const;

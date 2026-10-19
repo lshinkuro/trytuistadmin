@@ -1,6 +1,7 @@
 "use client";
 
 import { Select } from "../../components/ui";
+import { useCurrentAdmin } from "../../hooks/useAuth";
 import { useStores } from "../../hooks/useStores";
 
 /**
@@ -19,6 +20,8 @@ export function StoreSelect({
   className?: string;
 }) {
   const stores = useStores();
+  // Admin outlet tidak memilih outlet: backend selalu memakai outletnya.
+  if (useCurrentAdmin().data?.store) return null;
   return (
     <Select aria-label="Outlet" value={value} onChange={(e) => onChange(e.target.value)} className={className ?? "w-52"}>
       <option value="">{allLabel}</option>

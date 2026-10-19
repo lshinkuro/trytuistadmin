@@ -1,4 +1,6 @@
 import {
+  MAX_BUNDLE_ITEMS,
+  MAX_BUNDLE_QUANTITY,
   MAX_OPTION_EXTRA,
   MAX_OPTIONS,
   MAX_PRICE,
@@ -36,6 +38,18 @@ export function validateProduct(input: Partial<ProductInput>): FieldErrors {
       seen.add(name);
       if (!Number.isInteger(o.extraPrice) || o.extraPrice < 0 || o.extraPrice > MAX_OPTION_EXTRA) {
         errors[`options.${i}.extraPrice`] = "Tambahan 0 – Rp 1.000.000";
+      }
+    });
+  }
+  if (input.bundleItems) {
+    if (input.bundleItems.length > MAX_BUNDLE_ITEMS) errors.bundleItems = `Maksimal ${MAX_BUNDLE_ITEMS} isi paket`;
+    const seen = new Set<string>();
+    input.bundleItems.forEach((b, i) => {
+      if (!b.productId) errors[`bundleItems.${i}.productId`] = "Pilih menu";
+      else if (seen.has(`${b.productId}|${b.optionId ?? ""}`)) errors[`bundleItems.${i}.productId`] = "Sudah ada; ubah jumlahnya saja";
+      seen.add(`${b.productId}|${b.optionId ?? ""}`);
+      if (!Number.isInteger(b.quantity) || b.quantity < 1 || b.quantity > MAX_BUNDLE_QUANTITY) {
+        errors[`bundleItems.${i}.quantity`] = `1–${MAX_BUNDLE_QUANTITY}`;
       }
     });
   }

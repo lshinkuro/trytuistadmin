@@ -16,6 +16,7 @@ const valid: ProductInput = {
     { name: "Regular", extraPrice: 0 },
     { name: "Porsi Jumbo", extraPrice: 3000 },
   ],
+  bundleItems: [],
 };
 
 describe("validateProduct", () => {

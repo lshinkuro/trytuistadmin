@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { camel, toAppError } from "../http/httpClient";
-import { toDealBody, toProductBody, toStatus } from "./mappers";
+import { toDealBody, toOrderSummary, toPaymentSummary, toProductBody, toStatus } from "./mappers";
 
 describe("mappers", () => {
   it("status tak dikenal tidak membuat UI crash", () => {
@@ -34,5 +34,23 @@ describe("mappers", () => {
     expect(camel("options[1].extra_price")).toBe("options.1.extraPrice");
     expect(camel("product_name")).toBe("name");
     expect(camel("deal_price")).toBe("dealPrice");
+  });
+
+  it("pesanan Bayar Online tidak tampil sebagai COD", () => {
+    const customer = { id: "u1", name: "K", email: "k@x", phone: null };
+    const base = { order_id: "o1", order_number: "ORD-1", status: "PAID", total: 54000, item_summary: "", qty: 1, store_id: "ST01", store_name: "G", customer, created_at: "2026-10-19T10:00:00+07:00", updated_at: "2026-10-19T10:00:00+07:00" };
+    expect(toOrderSummary({ ...base, payment_method: "ONLINE" }).paymentMethod).toBe("ONLINE");
+    expect(toOrderSummary({ ...base, payment_method: "ANEH" }).paymentMethod).toBe("COD");
+  });
+
+  it("ringkasan pembayaran: status tak dikenal aman, pesanan opsional", () => {
+    const p = toPaymentSummary({
+      id: "p1", provider_order_id: "TT-DEV-1", status: "BARU", amount: 54000, refunded_amount: 20000, refund_status: "PARTIAL_REFUND",
+      payment_type: "gopay", store_id: "ST01", store_name: "G", customer: { id: "u1", name: "K", email: "k@x", phone: null },
+      order: { id: "o1", order_number: "ORD-1", status: "PAID" }, created_at: "2026-10-19T10:00:00+07:00", paid_at: null, expires_at: "2026-10-19T10:15:00+07:00",
+    });
+    expect(p.status).toBe("PENDING");
+    expect(p.order?.orderNumber).toBe("ORD-1");
+    expect(p.paidAt).toBeNull();
   });
 });

@@ -1,6 +1,7 @@
 import type { FieldErrors } from "@/domain/shared/errors";
 import { ValidationError } from "@/domain/shared/errors";
-import { isClock, MAX_RADIUS_KM, type StoreInput, type StoreRepository } from "@/domain/store/Store";
+import { MAX_PRICE } from "@/domain/product/Product";
+import { isClock, MAX_RADIUS_KM, MAX_STOCK, type StoreInput, type StoreProductInput, type StoreRepository } from "@/domain/store/Store";
 
 /** Aturan sama dengan backend (POST/PATCH /v1/admin/stores). Hanya field yang ada yang dicek. */
 export function validateStore(input: Partial<StoreInput>): FieldErrors {
@@ -46,7 +47,19 @@ export function makeSetStoreTempClosed(repo: StoreRepository) {
   return ({ id, closed }: { id: string; closed: boolean }) => repo.update(id, { isTemporarilyClosed: closed });
 }
 
-export function makeSetStoreStock(repo: StoreRepository) {
-  return ({ storeId, productId, isAvailable }: { storeId: string; productId: string; isAvailable: boolean }) =>
-    repo.setProductAvailability(storeId, productId, isAvailable);
+/** Aturan sama dengan backend (PUT /v1/admin/stores/{id}/products/{product_id}). */
+export function validateStoreProduct(input: StoreProductInput): FieldErrors {
+  const errors: FieldErrors = {};
+  const { stock, price } = input;
+  if (stock !== null && (!Number.isInteger(stock) || stock < 0 || stock > MAX_STOCK)) errors.stock = `Stok 0 – ${MAX_STOCK.toLocaleString("id-ID")}`;
+  if (price !== null && (!Number.isInteger(price) || price < 1 || price > MAX_PRICE)) errors.price = "Harga Rp 1 – Rp 10.000.000";
+  return errors;
+}
+
+export function makeSetStoreProduct(repo: StoreRepository) {
+  return ({ storeId, productId, input }: { storeId: string; productId: string; input: StoreProductInput }) => {
+    const errors = validateStoreProduct(input);
+    if (Object.keys(errors).length > 0) throw new ValidationError("Periksa lagi stok & harga outlet.", errors);
+    return repo.setStoreProduct(storeId, productId, input);
+  };
 }

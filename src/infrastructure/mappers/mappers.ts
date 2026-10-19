@@ -1,6 +1,15 @@
 import type { AuditLog } from "@/domain/audit/AuditLog";
+import type { AdminUser } from "@/domain/auth/Auth";
 import type { Dashboard } from "@/domain/dashboard/Dashboard";
+import {
+  BANNER_ACTIONS,
+  type Banner,
+  type BannerActionType,
+  type BannerInput,
+  type BannerStatus,
+} from "@/domain/banner/Banner";
 import type { Deal, DealInput, DealStatus } from "@/domain/deal/Deal";
+import type { DeliveryOverview, DeliverySettings } from "@/domain/delivery/DeliverySettings";
 import {
   ORDER_STATUSES,
   type OrderDetail,
@@ -8,18 +17,33 @@ import {
   type OrderSummary,
   type PaymentMethod,
 } from "@/domain/order/Order";
+import {
+  PAYMENT_STATUSES,
+  type PaymentDetail,
+  type PaymentOrderRef,
+  type PaymentStatus,
+  type PaymentSummary,
+  type RefundStatus,
+} from "@/domain/payment/Payment";
 import type { Category, Product, ProductInput } from "@/domain/product/Product";
 import type { Store, StoreInput } from "@/domain/store/Store";
 import type { MemberTier, User, UserRole } from "@/domain/user/User";
 import type {
+  AdminBannerDTO,
+  AdminMeDTO,
   AdminOrderDTO,
   AdminOrderSummaryDTO,
+  AdminPaymentDTO,
+  AdminPaymentSummaryDTO,
   AdminProductDTO,
   AdminStoreDTO,
   AuditLogDTO,
   CategoryDTO,
   DashboardDTO,
   DealDTO,
+  DeliverySettingsDTO,
+  DeliverySettingsResponseDTO,
+  PaymentOrderRefDTO,
   UserDTO,
 } from "../dto/dtos";
 
@@ -30,7 +54,7 @@ export function toStatus(value: string): OrderStatus {
 }
 
 const toPayment = (value: string): PaymentMethod =>
-  value === "QRIS" || value === "EWALLET" ? value : "COD";
+  value === "QRIS" || value === "EWALLET" || value === "ONLINE" ? value : "COD";
 
 export function toOrderSummary(dto: AdminOrderSummaryDTO): OrderSummary {
   return {
@@ -83,6 +107,7 @@ export function toOrderDetail(dto: AdminOrderDTO): OrderDetail {
       quantity: i.quantity,
       note: i.note,
       subtotal: i.subtotal,
+      bundle: (i.bundle_items ?? []).map((b) => `${b.quantity}× ${b.product_name}${b.option_name ? ` (${b.option_name})` : ""}`),
     })),
     history: dto.status_history.map((h) => ({
       status: toStatus(h.status),
@@ -93,6 +118,95 @@ export function toOrderDetail(dto: AdminOrderDTO): OrderDetail {
     rating: dto.rating ? { rating: dto.rating.rating, comment: dto.rating.comment } : null,
     customer: dto.customer,
     nextStatuses: dto.next_statuses.map(toStatus),
+    freeDeliveryCoupon: dto.free_delivery_coupon ?? false,
+    deliveryFeeWaived: dto.delivery_fee_waived ?? 0,
+    distanceKm: dto.distance_km ?? null,
+    eta:
+      dto.eta_min_minutes != null && dto.eta_max_minutes != null
+        ? { minMinutes: dto.eta_min_minutes, maxMinutes: dto.eta_max_minutes }
+        : null,
+    payment: dto.payment
+      ? {
+          id: dto.payment.id,
+          providerOrderId: dto.payment.provider_order_id,
+          status: dto.payment.status,
+          paymentType: dto.payment.payment_type,
+          refundStatus: dto.payment.refund_status,
+          paidAt: dto.payment.paid_at ? new Date(dto.payment.paid_at) : null,
+        }
+      : null,
+  };
+}
+
+const toPaymentStatus = (value: string): PaymentStatus =>
+  (PAYMENT_STATUSES as readonly string[]).includes(value) ? (value as PaymentStatus) : "PENDING";
+
+const toPaymentOrder = (dto: PaymentOrderRefDTO | null): PaymentOrderRef | null =>
+  dto ? { id: dto.id, orderNumber: dto.order_number, status: toStatus(dto.status) } : null;
+
+export function toPaymentSummary(dto: AdminPaymentSummaryDTO): PaymentSummary {
+  return {
+    id: dto.id,
+    providerOrderId: dto.provider_order_id,
+    status: toPaymentStatus(dto.status),
+    amount: dto.amount,
+    refundedAmount: dto.refunded_amount,
+    refundStatus: dto.refund_status as RefundStatus | null,
+    paymentType: dto.payment_type,
+    storeName: dto.store_name,
+    customer: dto.customer,
+    order: toPaymentOrder(dto.order),
+    createdAt: new Date(dto.created_at),
+    paidAt: dto.paid_at ? new Date(dto.paid_at) : null,
+    expiresAt: new Date(dto.expires_at),
+  };
+}
+
+export function toPaymentDetail(dto: AdminPaymentDTO): PaymentDetail {
+  return {
+    id: dto.id,
+    providerOrderId: dto.provider_order_id,
+    providerTxnId: dto.provider_txn_id,
+    status: toPaymentStatus(dto.status),
+    amount: dto.amount,
+    refundedAmount: dto.refunded_amount,
+    refundableAmount: dto.refundable_amount,
+    canRefundOnline: dto.can_refund_online,
+    refundStatus: dto.refund_status as RefundStatus | null,
+    statusMessage: dto.status_message,
+    paymentType: dto.payment_type,
+    storeName: dto.store.name,
+    customer: dto.customer,
+    order: toPaymentOrder(dto.order),
+    createdAt: new Date(dto.created_at),
+    paidAt: dto.paid_at ? new Date(dto.paid_at) : null,
+    expiresAt: new Date(dto.expires_at),
+    subtotal: dto.quote.subtotal,
+    deliveryFee: dto.quote.delivery_fee,
+    discount: dto.quote.discount,
+    items: dto.quote.items.map((i) => ({
+      productName: i.product_name,
+      optionName: i.option_name,
+      quantity: i.quantity,
+      subtotal: i.subtotal,
+    })),
+    refunds: dto.refunds.map((r) => ({
+      id: r.id,
+      amount: r.amount,
+      reason: r.reason,
+      method: r.method === "MANUAL" ? "MANUAL" : "MIDTRANS",
+      status: r.status === "SUCCEEDED" || r.status === "FAILED" ? r.status : "PENDING",
+      message: r.message,
+      adminName: r.admin_name,
+      createdAt: new Date(r.created_at),
+    })),
+    events: dto.events.map((e) => ({
+      source: e.source,
+      providerStatus: e.provider_status,
+      signatureOk: e.signature_ok,
+      payload: e.payload,
+      createdAt: new Date(e.created_at),
+    })),
   };
 }
 
@@ -112,9 +226,29 @@ export function toProduct(dto: AdminProductDTO): Product {
     isAvailable: dto.is_available,
     isBestSeller: dto.is_best_seller,
     options: dto.options.map((o) => ({ id: o.id, name: o.name, extraPrice: o.extra_price })),
+    bundleItems: (dto.bundle_items ?? []).map((b) => ({
+      productId: b.product_id,
+      productName: b.product_name,
+      optionId: b.option_id,
+      optionName: b.option_name,
+      quantity: b.quantity,
+      unitPrice: b.unit_price,
+    })),
+    separatePrice: dto.separate_price ?? 0,
     updatedAt: new Date(dto.updated_at),
-    ...(dto.store_available !== undefined
-      ? { store: { isAvailable: dto.store_available, isSoldOutHere: dto.store_sold_out ?? false } }
+    ...(dto.store
+      ? {
+          store: {
+            storeId: dto.store.store_id,
+            isListed: dto.store.is_listed,
+            isSoldOut: dto.store.is_sold_out,
+            stock: dto.store.stock,
+            price: dto.store.price,
+            dealPrice: dto.store.deal_price,
+            effectivePrice: dto.store.effective_price,
+            isAvailable: dto.store.is_available,
+          },
+        }
       : {}),
   };
 }
@@ -136,6 +270,7 @@ export function toStore(dto: AdminStoreDTO): Store {
     isOpenNow: dto.is_open_now,
     sortOrder: dto.sort_order,
     unavailableProducts: dto.unavailable_products,
+    listedProducts: dto.listed_products ?? 0,
     today: dto.today,
   };
 }
@@ -169,6 +304,9 @@ export function toProductBody(input: Partial<ProductInput>): Record<string, unkn
   if (input.options !== undefined) {
     body.options = input.options.map((o) => ({ ...(o.id ? { id: o.id } : {}), name: o.name, extra_price: o.extraPrice }));
   }
+  if (input.bundleItems !== undefined) {
+    body.bundle_items = input.bundleItems.map((b) => ({ product_id: b.productId, option_id: b.optionId, quantity: b.quantity }));
+  }
   return body;
 }
 
@@ -194,6 +332,8 @@ export function toDeal(dto: DealDTO): Deal {
     showAsPopup: dto.show_as_popup,
     sortOrder: dto.sort_order,
     status: (DEAL_STATUSES as string[]).includes(dto.status) ? (dto.status as DealStatus) : "INACTIVE",
+    store: dto.store_id ? { id: dto.store_id, name: dto.store_name ?? dto.store_id } : null,
+    canEdit: dto.can_edit ?? true,
   };
 }
 
@@ -211,6 +351,7 @@ export function toDealBody(input: Partial<DealInput>): Record<string, unknown> {
   if (input.isActive !== undefined) body.is_active = input.isActive;
   if (input.showAsPopup !== undefined) body.show_as_popup = input.showAsPopup;
   if (input.sortOrder !== undefined) body.sort_order = input.sortOrder;
+  if (input.storeId !== undefined) body.store_id = input.storeId;
   return body;
 }
 
@@ -270,12 +411,23 @@ export function toUser(dto: UserDTO): User {
     name: dto.name,
     email: dto.email,
     phone: dto.phone,
-    role: (dto.role === "ADMIN" ? "ADMIN" : "CUSTOMER") as UserRole,
+    role: (["SUPER_ADMIN", "OUTLET_ADMIN"].includes(dto.role) ? dto.role : "CUSTOMER") as UserRole,
     tier: (["SILVER", "GOLD", "PLATINUM"].includes(dto.member_tier) ? dto.member_tier : "SILVER") as MemberTier,
     ordersCount: dto.orders_count,
     totalSpent: dto.total_spent,
     lastOrderAt: dto.last_order_at ? new Date(dto.last_order_at) : null,
     createdAt: new Date(dto.created_at),
+  };
+}
+
+export function toAdminUser(dto: AdminMeDTO): AdminUser {
+  return {
+    id: dto.id,
+    name: dto.name,
+    email: dto.email,
+    // Role tak dikenal diperlakukan sebagai admin outlet (akses paling sempit).
+    role: dto.role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "OUTLET_ADMIN",
+    store: dto.store_id ? { id: dto.store_id, name: dto.store_name ?? dto.store_id } : null,
   };
 }
 
@@ -289,4 +441,80 @@ export function toAuditLog(dto: AuditLogDTO): AuditLog {
     adminName: dto.admin_name,
     createdAt: new Date(dto.created_at),
   };
+}
+
+export function toDeliveryOverview(dto: DeliverySettingsResponseDTO): DeliveryOverview {
+  const s = dto.settings;
+  return {
+    settings: {
+      deliveryFee: s.delivery_fee,
+      deliveryBaseKm: s.delivery_base_km,
+      deliveryFeePerKm: s.delivery_fee_per_km,
+      deliveryFeeMax: s.delivery_fee_max,
+      freeDeliveryMinSubtotal: s.free_delivery_min_subtotal,
+      prepMinutes: s.prep_minutes,
+      courierSpeedKmh: s.courier_speed_kmh,
+      freeDeliveryCouponEnabled: s.free_delivery_coupon_enabled,
+      freeDeliveryCouponWeekly: s.free_delivery_coupon_weekly,
+    },
+    examples: dto.examples.map((e) => ({
+      distanceKm: e.distance_km,
+      fee: e.delivery_fee,
+      etaMinMinutes: e.eta_min_minutes,
+      etaMaxMinutes: e.eta_max_minutes,
+    })),
+    updatedAt: dto.updated_at ? new Date(dto.updated_at) : null,
+  };
+}
+
+export function toDeliverySettingsBody(s: DeliverySettings): DeliverySettingsDTO {
+  return {
+    delivery_fee: s.deliveryFee,
+    delivery_base_km: s.deliveryBaseKm,
+    delivery_fee_per_km: s.deliveryFeePerKm,
+    delivery_fee_max: s.deliveryFeeMax,
+    free_delivery_min_subtotal: s.freeDeliveryMinSubtotal,
+    prep_minutes: s.prepMinutes,
+    courier_speed_kmh: s.courierSpeedKmh,
+    free_delivery_coupon_enabled: s.freeDeliveryCouponEnabled,
+    free_delivery_coupon_weekly: s.freeDeliveryCouponWeekly,
+  };
+}
+
+export function toBanner(dto: AdminBannerDTO): Banner {
+  return {
+    id: dto.id,
+    title: dto.title,
+    subtitle: dto.subtitle,
+    imageUrl: dto.image_url,
+    actionType: (BANNER_ACTIONS as readonly string[]).includes(dto.action_type) ? (dto.action_type as BannerActionType) : "NONE",
+    actionValue: dto.action_value,
+    actionLabel: dto.action_label,
+    startsAt: dto.starts_at ? new Date(dto.starts_at) : null,
+    endsAt: dto.ends_at ? new Date(dto.ends_at) : null,
+    sortOrder: dto.sort_order,
+    isActive: dto.is_active,
+    status: (["LIVE", "SCHEDULED", "ENDED", "INACTIVE", "HIDDEN"].includes(dto.status) ? dto.status : "INACTIVE") as BannerStatus,
+  };
+}
+
+export function toBannerBody(input: Partial<BannerInput>): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  if (input.title !== undefined) body.title = input.title;
+  if (input.subtitle !== undefined) body.subtitle = input.subtitle;
+  if (input.imageUrl !== undefined) body.image_url = input.imageUrl;
+  if (input.actionType !== undefined) body.action_type = input.actionType;
+  if (input.actionValue !== undefined) body.action_value = input.actionValue ?? "";
+  if (input.startsAt !== undefined || input.endsAt !== undefined) {
+    // Periode dikirim lengkap; keduanya kosong = tampil tanpa batas waktu.
+    if (!input.startsAt && !input.endsAt) body.clear_schedule = true;
+    else {
+      body.clear_schedule = true;
+      if (input.startsAt) body.starts_at = input.startsAt.toISOString();
+      if (input.endsAt) body.ends_at = input.endsAt.toISOString();
+    }
+  }
+  if (input.sortOrder !== undefined) body.sort_order = input.sortOrder;
+  if (input.isActive !== undefined) body.is_active = input.isActive;
+  return body;
 }

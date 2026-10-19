@@ -3,16 +3,26 @@
 import { Plus, Search } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import type { Product, ProductFilter } from "@/domain/product/Product";
+import type { Product, ProductFilter, StoreProduct } from "@/domain/product/Product";
 import { formatNumber, formatRupiah } from "@/shared/lib/format";
 import { EmptyState, ErrorState } from "../../components/common/States";
 import { PageHeader } from "../../components/layout/PageHeader";
 import { Badge, Button, Card, Input, Select, Skeleton, Switch, Table, TBody, TD, TH, THead, TR } from "../../components/ui";
+import { useCurrentAdmin } from "../../hooks/useAuth";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { useCategories, useProducts, useUpdateProduct } from "../../hooks/useProducts";
-import { useSetStoreStock, useStores } from "../../hooks/useStores";
+import { useStores } from "../../hooks/useStores";
 import { StoreSelect } from "../stores/StoreSelect";
 import { ProductFormDialog } from "./ProductFormDialog";
+import { StoreProductDialog } from "./StoreProductDialog";
+
+function StoreStockBadge({ store }: { store: StoreProduct }) {
+  if (!store.isListed) return <Badge tone="neutral">Tidak dijual</Badge>;
+  if (store.isSoldOut) return <Badge tone="danger">Habis (manual)</Badge>;
+  if (store.stock === 0) return <Badge tone="danger">Stok 0</Badge>;
+  if (store.stock !== null) return <Badge tone={store.stock <= 5 ? "warning" : "success"}>Stok {formatNumber(store.stock)}</Badge>;
+  return <Badge tone="success">Tersedia</Badge>;
+}
 
 export function ProductsView() {
   const [query, setQuery] = useState("");
@@ -20,19 +30,27 @@ export function ProductsView() {
   const [availability, setAvailability] = useState<ProductFilter["availability"]>("all");
   const [editing, setEditing] = useState<Product | "new" | null>(null);
   // ?store= dari halaman Outlet ("Menu habis").
-  const [storeId, setStoreId] = useState(useSearchParams().get("store") ?? "");
+  const [selectedStoreId, setStoreId] = useState(useSearchParams().get("store") ?? "");
+  // Admin outlet selalu melihat & mengatur outletnya sendiri (dipaksa juga oleh backend).
+  const outlet = useCurrentAdmin().data?.store ?? null;
+  const storeId = outlet?.id ?? selectedStoreId;
+  const [storeEditing, setStoreEditing] = useState<Product | null>(null);
   const filter: ProductFilter = { query: useDebouncedValue(query), categoryId, availability, storeId };
   const products = useProducts(filter);
   const categories = useCategories();
   const update = useUpdateProduct();
-  const storeStock = useSetStoreStock();
-  const storeName = useStores().data?.find((s) => s.id === storeId)?.name;
+  const stores = useStores();
+  const storeName = outlet?.name ?? stores.data?.find((s) => s.id === storeId)?.name ?? storeId;
 
   return (
     <>
       <PageHeader
         title="Produk & harga"
-        description="Tambah menu, ubah harga (sama di semua outlet), varian, dan stok. Pilih outlet untuk menandai menu habis di outlet itu saja."
+        description={
+          outlet
+            ? `Atur menu yang dijual di ${outlet.name}: stok, harga khusus outlet, dan tandai habis. Menu baru yang kamu tambahkan hanya dijual di outletmu.`
+            : "Tambah menu & atur harga pusat. Pilih outlet untuk mengatur menu yang dijual, stok, dan harga khusus outlet itu."
+        }
         actions={
           <Button onClick={() => setEditing("new")}>
             <Plus aria-hidden /> Tambah menu
@@ -40,7 +58,7 @@ export function ProductsView() {
         }
       />
       <div className="mb-4 flex flex-wrap gap-3">
-        <StoreSelect value={storeId} onChange={setStoreId} allLabel="Stok pusat (semua outlet)" />
+        {!outlet && <StoreSelect value={storeId} onChange={setStoreId} allLabel="Katalog pusat (semua outlet)" />}
         <label className="relative min-w-60 flex-1">
           <span className="sr-only">Cari produk</span>
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-faint" aria-hidden />
@@ -74,10 +92,10 @@ export function ProductsView() {
             <THead>
               <TR>
                 <TH>Produk</TH>
-                <TH className="text-right">Harga normal</TH>
+                <TH className="text-right">{storeId ? "Harga outlet" : "Harga pusat"}</TH>
                 <TH className="text-right">Dibayar pelanggan</TH>
                 <TH className="text-right">Terjual</TH>
-                <TH>{storeName ? `Stok di ${storeName}` : "Stok (semua outlet)"}</TH>
+                <TH>{storeId ? `Stok di ${storeName}` : "Stok (semua outlet)"}</TH>
                 <TH>
                   <span className="sr-only">Aksi</span>
                 </TH>
@@ -107,16 +125,26 @@ export function ProductsView() {
                         <span className="text-xs text-ink-muted">
                           {p.categoryName} · {p.id}
                           {p.options.length > 0 && ` · ${p.options.length} varian`}
+                          {p.bundleItems.length > 0 && ` · paket: ${p.bundleItems.map((b) => `${b.quantity}× ${b.productName}`).join(", ")}`}
                         </span>
                       </div>
                     </div>
                   </TD>
-                  <TD className="tabular text-right">{formatRupiah(p.price)}</TD>
                   <TD className="tabular text-right">
-                    {p.dealPrice !== null ? (
+                    {p.store?.price != null ? (
+                      <span className="flex flex-col items-end">
+                        <span className="font-semibold">{formatRupiah(p.store.price)}</span>
+                        <span className="text-xs text-ink-faint line-through">{formatRupiah(p.price)}</span>
+                      </span>
+                    ) : (
+                      formatRupiah(p.price)
+                    )}
+                  </TD>
+                  <TD className="tabular text-right">
+                    {(p.store ? p.store.dealPrice : p.dealPrice) !== null ? (
                       <span className="inline-flex items-center gap-2">
                         <Badge tone="brand">Promo</Badge>
-                        <span className="font-semibold">{formatRupiah(p.effectivePrice)}</span>
+                        <span className="font-semibold">{formatRupiah(p.store?.effectivePrice ?? p.effectivePrice)}</span>
                       </span>
                     ) : (
                       <span className="text-ink-muted">sama</span>
@@ -126,13 +154,12 @@ export function ProductsView() {
                   <TD>
                     {storeId && p.store ? (
                       p.isAvailable ? (
-                        <Switch
-                          label={p.store.isAvailable ? "Tersedia" : "Habis di outlet ini"}
-                          checked={p.store.isAvailable}
-                          disabled={storeStock.isPending && storeStock.variables?.productId === p.id}
-                          onChange={(e) => storeStock.mutate({ storeId, productId: p.id, isAvailable: e.target.checked })}
-                          aria-label={`Stok ${p.name} di ${storeName ?? storeId}`}
-                        />
+                        <span className="inline-flex items-center gap-2">
+                          <StoreStockBadge store={p.store} />
+                          <Button size="sm" variant="ghost" onClick={() => setStoreEditing(p)} aria-label={`Atur ${p.name} di ${storeName}`}>
+                            Atur
+                          </Button>
+                        </span>
                       ) : (
                         <span className="text-sm text-ink-muted">Habis di semua outlet</span>
                       )
@@ -166,6 +193,15 @@ export function ProductsView() {
               />
             ))}
         </Card>
+      )}
+      {storeEditing?.store && (
+        <StoreProductDialog
+          key={storeEditing.id}
+          product={storeEditing}
+          store={storeEditing.store}
+          storeName={storeName}
+          onClose={() => setStoreEditing(null)}
+        />
       )}
       {editing && (
         <ProductFormDialog

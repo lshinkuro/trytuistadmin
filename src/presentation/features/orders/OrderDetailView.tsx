@@ -4,6 +4,7 @@ import { ArrowLeft, Check, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import type { OrderDetail, OrderStatus } from "@/domain/order/Order";
+import { paymentTypeLabel, REFUND_STATUS_LABEL, type RefundStatus } from "@/domain/payment/Payment";
 import { ORDER_FLOW, ORDER_STATUS_LABEL, isFinal } from "@/domain/order/orderStatus";
 import { cn } from "@/shared/lib/cn";
 import { formatDateTime, formatRupiah } from "@/shared/lib/format";
@@ -72,6 +73,13 @@ function OrderDetailContent({ order }: { order: OrderDetail }) {
                     <span className="tabular w-8 shrink-0 font-bold text-ink">{item.quantity}×</span>
                     <div className="flex min-w-0 flex-1 flex-col">
                       <span className="font-semibold">{item.productName}</span>
+                      {item.bundle.length > 0 && (
+                        <ul className="my-0.5 text-sm text-ink">
+                          {item.bundle.map((part) => (
+                            <li key={part}>• {part}</li>
+                          ))}
+                        </ul>
+                      )}
                       <span className="text-sm text-ink-muted">
                         {[item.optionName, item.note && `“${item.note}”`].filter(Boolean).join(" · ") ||
                           `${formatRupiah(item.unitPrice)} / item`}
@@ -83,7 +91,16 @@ function OrderDetailContent({ order }: { order: OrderDetail }) {
               </ul>
               <dl className="tabular mt-2 flex flex-col gap-1.5 border-t border-line pt-3 text-sm">
                 <Row label="Subtotal" value={formatRupiah(order.subtotal)} />
-                <Row label="Ongkir" value={order.deliveryFee === 0 ? "Gratis" : formatRupiah(order.deliveryFee)} />
+                <Row
+                  label={order.freeDeliveryCoupon ? "Ongkir (kupon gratis ongkir)" : "Ongkir"}
+                  value={
+                    order.freeDeliveryCoupon
+                      ? `Gratis · ditanggung ${formatRupiah(order.deliveryFeeWaived)}`
+                      : order.deliveryFee === 0
+                        ? "Gratis"
+                        : formatRupiah(order.deliveryFee)
+                  }
+                />
                 {order.discount > 0 && (
                   <Row label={`Diskon${order.voucherCode ? ` (${order.voucherCode})` : ""}`} value={`−${formatRupiah(order.discount)}`} />
                 )}
@@ -108,10 +125,17 @@ function OrderDetailContent({ order }: { order: OrderDetail }) {
                 </a>
                 {order.customer.phone && <span className="text-ink-muted">{order.customer.phone}</span>}
                 <span className="mt-3 font-semibold">{PAYMENT_LABEL[order.paymentMethod]}</span>
-                {order.paymentProvider && (
-                  <span className="text-ink-muted">
-                    {order.paymentProvider} {order.paymentAccountMasked}
-                  </span>
+                {order.payment ? (
+                  <Link href={`/payments/${order.payment.id}`} className="text-brand hover:underline">
+                    {paymentTypeLabel(order.payment.paymentType)} · {order.payment.providerOrderId}
+                    {order.payment.refundStatus && ` · ${REFUND_STATUS_LABEL[order.payment.refundStatus as RefundStatus] ?? order.payment.refundStatus}`}
+                  </Link>
+                ) : (
+                  order.paymentProvider && (
+                    <span className="text-ink-muted">
+                      {order.paymentProvider} {order.paymentAccountMasked}
+                    </span>
+                  )
                 )}
               </CardContent>
             </Card>
@@ -128,6 +152,12 @@ function OrderDetailContent({ order }: { order: OrderDetail }) {
                     <span className="text-ink-muted">{order.address.phone}</span>
                     <span>{order.address.address}</span>
                     {order.address.notes && <span className="text-ink-muted">{order.address.notes}</span>}
+                    {order.distanceKm !== null && (
+                      <span className="tabular mt-2 text-ink-muted">
+                        {order.distanceKm.toLocaleString("id-ID")} km dari outlet
+                        {order.eta && ` · estimasi ${order.eta.minMinutes}–${order.eta.maxMinutes} menit`}
+                      </span>
+                    )}
                   </>
                 ) : (
                   <span className="text-ink-muted">Alamat sudah dihapus pelanggan.</span>

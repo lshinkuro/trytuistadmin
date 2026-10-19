@@ -12,7 +12,7 @@ export const ORDER_STATUSES = [
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
-export type PaymentMethod = "COD" | "QRIS" | "EWALLET";
+export type PaymentMethod = "COD" | "QRIS" | "EWALLET" | "ONLINE";
 
 export interface Customer {
   id: string;
@@ -44,6 +44,8 @@ export interface OrderLine {
   quantity: number;
   note: string;
   subtotal: number;
+  /** Isi paket combo, mis. "1× Es Kopi Susu (Large)"; kosong untuk menu biasa. */
+  bundle: string[];
 }
 
 export interface StatusEvent {
@@ -76,6 +78,21 @@ export interface OrderDetail extends Omit<OrderSummary, "itemSummary" | "quantit
   rating: { rating: number; comment: string | null } | null;
   /** Status yang boleh dipilih admin dari status sekarang (dari server). */
   nextStatuses: OrderStatus[];
+  /** Pelanggan memakai kupon gratis ongkir mingguan; `deliveryFeeWaived` = ongkir yang ditanggung toko. */
+  freeDeliveryCoupon: boolean;
+  deliveryFeeWaived: number;
+  /** null = alamat tanpa koordinat / pesanan lama. */
+  distanceKm: number | null;
+  eta: { minMinutes: number; maxMinutes: number } | null;
+  /** Pembayaran online (Midtrans); null untuk COD. */
+  payment: {
+    id: string;
+    providerOrderId: string;
+    status: string;
+    paymentType: string | null;
+    refundStatus: string | null;
+    paidAt: Date | null;
+  } | null;
 }
 
 export interface OrderFilter {

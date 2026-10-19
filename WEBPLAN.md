@@ -66,7 +66,11 @@ Semua versi dipin persis di `package.json`.
 | `/stores` | Outlet | Kartu per outlet: status (buka / tutup sesuai jam / tutup sementara / nonaktif), jam buka, radius antar, menu habis, pesanan & omzet hari ini; **Tambah outlet**, ubah (24 jam, lewat tengah malam), tombol **Tutup sementara** | `GET/POST /v1/admin/stores`, `PATCH /v1/admin/stores/{id}` |
 | `/promos` | Promo | Buat / ubah / nonaktifkan / hapus promo, tandai popup Beranda | `GET/POST /v1/admin/deals`, `PATCH/DELETE /v1/admin/deals/{id}` |
 | `/customers` | Pelanggan | Daftar akun + jumlah pesanan + total belanja sukses | `GET /v1/admin/customers` |
-| `/activity` | Aktivitas | Audit log semua perubahan dari web admin | `GET /v1/admin/audit-logs` |
+| `/activity` | Aktivitas 👑 | Audit log semua perubahan dari web admin | `GET /v1/admin/audit-logs` |
+| `/categories` | Kategori 👑 | Tambah, ubah nama/ikon/urutan, sembunyikan kategori | `GET/POST /v1/admin/categories`, `PATCH /v1/admin/categories/{id}` |
+| `/staff` | Akun admin 👑 | Buat akun super admin / admin outlet, pindah outlet, cabut akses | `GET/POST /v1/admin/staff`, `PATCH /v1/admin/staff/{id}` |
+
+👑 = khusus super admin. Di `/products`, admin outlet (atau super admin yang memilih outlet) membuka **Atur** per menu: dijual di outlet, tandai habis, hitung stok, harga khusus outlet. Di `/promos`, promo bisa untuk semua outlet atau satu outlet.
 
 **Aturan status pesanan oleh admin.** Sama di backend (`order.CanAdminTransition`) dan frontend (`domain/order/orderStatus.ts`):
 
@@ -243,10 +247,12 @@ GET /api/backend/v1/admin/... ─→ tambah X-API-Key + Bearer dari cookie ─�
 - Sesi habis (refresh juga gagal) → `QueryCache.onError` membuka `/login?expired=1&next=…`.
 - Semua perubahan dicatat di `admin_audit_logs` (halaman Aktivitas).
 
-**Membuat admin.** Dev/staging: `make seed` membuat `admin@trytuist.com / admin12345`. Production:
+**Role (§5.29 API_PLAN).** `SUPER_ADMIN` melihat semua outlet; `OUTLET_ADMIN` terikat ke satu outlet. Web membaca role dari `GET /v1/admin/me` (`useCurrentAdmin`): menu Kategori, Akun admin, Pelanggan, Aktivitas & pemilih outlet disembunyikan untuk admin outlet. Ini hanya tampilan; backend tetap memaksa scope & membalas 403.
+
+**Membuat admin.** Dev/staging: `make seed` membuat `admin@trytuist.com / admin12345` (super admin) dan `kemang@trytuist.com / outlet12345` (admin outlet Kemang Utara). Admin lain dibuat super admin di halaman **Akun admin**. Super admin pertama di production:
 
 ```sql
-UPDATE users SET role = 'ADMIN' WHERE lower(email) = 'nama@domain.com';
+UPDATE users SET role = 'SUPER_ADMIN' WHERE lower(email) = 'nama@domain.com';
 ```
 
 ---
@@ -1228,6 +1234,9 @@ Masuk dengan `admin@trytuist.com` / `admin12345`. Akun pelanggan biasa (`kholis@
 - [x] Login admin (akun yang sama, role ADMIN), BFF + cookie httpOnly + refresh otomatis
 - [x] Dashboard penjualan & pembelian, rel status pesanan
 - [x] Pesanan: daftar, filter, detail, tandai sukses / gagal / batal, majukan status
+- [x] Pembayaran (Midtrans): daftar & filter, detail + event Midtrans, refund penuh / sebagian / manual (super admin); info pembayaran, jarak & ETA di detail pesanan (`/payments`, API_PLAN §5.27.11)
+- [x] Ongkir (super admin): atur tarif dasar, per km, maksimal, gratis ongkir, estimasi waktu antar; contoh perhitungan & simulasi dari server (`/delivery`, API_PLAN §7)
+- [ ] Deploy web admin (belum masuk `deploy/` di repo API)
 - [x] Produk: tambah menu baru (kategori, foto, varian), ubah harga, varian, stok, nama, deskripsi, label terlaris
 - [ ] Upload foto menu langsung dari web (storage/CDN), arsip menu
 - [x] Promo: CRUD, nonaktifkan, popup Beranda
@@ -1235,8 +1244,12 @@ Masuk dengan `admin@trytuist.com` / `admin12345`. Akun pelanggan biasa (`kholis@
 - [ ] Ekspor CSV pesanan & laporan penjualan
 - [ ] Notifikasi pesanan baru (SSE / polling + suara) di halaman Pesanan
 - [x] Outlet: tambah, jam buka, radius antar, tutup sementara, stok per outlet, filter outlet di Pesanan & Dashboard
-- [ ] Kelola kategori, banner, voucher
-- [ ] Akun staf per outlet (hanya melihat pesanan outletnya)
+- [x] Kelola kategori
+- [x] Kelola banner (`/banners`, super admin): gambar, judul, aksi tap (menu / kategori / info kupon), periode, urutan, status Tampil/Disembunyikan
+- [x] Menu combo: editor isi paket di form menu (harga satuan & hemat), isi paket di daftar menu & detail pesanan
+- [ ] Kelola voucher
+- [x] Admin per outlet: pesanan, menu, stok, harga & promo outletnya (§5.29)
 - [ ] Pembelian bahan baku ke supplier: stok & HPP, untuk laba kotor di dashboard
-- [ ] Peran admin bertingkat (owner / kasir) dan 2FA
+- [x] Peran super admin / admin outlet
+- [ ] Peran kasir dan 2FA
 - [ ] E2E test Playwright di CI

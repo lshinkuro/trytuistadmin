@@ -64,6 +64,7 @@ export function DealsView() {
                         <Megaphone className="size-3" aria-hidden /> Popup Beranda
                       </Badge>
                     )}
+                    <Badge tone={deal.store ? "info" : "neutral"}>{deal.store ? deal.store.name : "Semua outlet"}</Badge>
                   </div>
                   <span className="text-sm text-ink-muted">
                     {deal.productName}:{" "}
@@ -79,17 +80,23 @@ export function DealsView() {
                 <Switch
                   label={deal.isActive ? "Aktif" : "Nonaktif"}
                   checked={deal.isActive}
-                  disabled={toggle.isPending && toggle.variables?.id === deal.id}
+                  disabled={!deal.canEdit || (toggle.isPending && toggle.variables?.id === deal.id)}
                   onChange={(e) => toggle.mutate({ id: deal.id, isActive: e.target.checked })}
                   aria-label={`Aktifkan promo ${deal.title}`}
                   className="mr-2"
                 />
-                <Button size="sm" variant="outline" onClick={() => setEditing(deal)}>
-                  Ubah
-                </Button>
-                <Button size="sm" variant="ghost" className="hover:text-danger" onClick={() => setDeleting(deal)}>
-                  Hapus
-                </Button>
+                {deal.canEdit ? (
+                  <>
+                    <Button size="sm" variant="outline" onClick={() => setEditing(deal)}>
+                      Ubah
+                    </Button>
+                    <Button size="sm" variant="ghost" className="hover:text-danger" onClick={() => setDeleting(deal)}>
+                      Hapus
+                    </Button>
+                  </>
+                ) : (
+                  <span className="text-xs text-ink-muted">Promo pusat</span>
+                )}
               </div>
             </div>
           ))}

@@ -8,6 +8,7 @@ import { formatNumber, formatRupiah } from "@/shared/lib/format";
 import { EmptyState, ErrorState } from "../../components/common/States";
 import { PageHeader } from "../../components/layout/PageHeader";
 import { Badge, Button, Card, Skeleton, Switch, type BadgeProps } from "../../components/ui";
+import { useCurrentAdmin } from "../../hooks/useAuth";
 import { useSetStoreTempClosed, useStores } from "../../hooks/useStores";
 import { StoreFormDialog } from "./StoreFormDialog";
 
@@ -22,16 +23,19 @@ export function StoresView() {
   const stores = useStores();
   const tempClose = useSetStoreTempClosed();
   const [editing, setEditing] = useState<Store | "new" | null>(null);
+  const isOutletAdmin = Boolean(useCurrentAdmin().data?.store);
 
   return (
     <>
       <PageHeader
         title="Outlet"
-        description="Aplikasi otomatis memilih outlet yang buka dan menjangkau alamat pelanggan, lalu yang terdekat. Harga menu sama di semua outlet."
+        description="Aplikasi otomatis memilih outlet yang buka dan menjangkau alamat pelanggan, lalu yang terdekat. Menu, stok, harga & promo bisa berbeda per outlet."
         actions={
-          <Button onClick={() => setEditing("new")}>
-            <Plus aria-hidden /> Tambah outlet
-          </Button>
+          isOutletAdmin ? undefined : (
+            <Button onClick={() => setEditing("new")}>
+              <Plus aria-hidden /> Tambah outlet
+            </Button>
+          )
         }
       />
       {stores.isError && <ErrorState error={stores.error} onRetry={() => stores.refetch()} />}

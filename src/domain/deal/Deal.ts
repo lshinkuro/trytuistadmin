@@ -24,6 +24,10 @@ export interface Deal {
   showAsPopup: boolean;
   sortOrder: number;
   status: DealStatus;
+  /** null = berlaku di semua outlet (§5.29). */
+  store: { id: string; name: string } | null;
+  /** Admin outlet tidak bisa mengubah promo pusat / outlet lain. */
+  canEdit: boolean;
 }
 
 export interface DealInput {
@@ -38,6 +42,8 @@ export interface DealInput {
   isActive: boolean;
   showAsPopup: boolean;
   sortOrder: number;
+  /** "" = semua outlet. Hanya dikirim oleh super admin; admin outlet selalu outletnya. */
+  storeId?: string;
 }
 
 /** Dibulatkan ke bawah, sama dengan backend & app iOS: 32.000 → 19.900 = 37%. */

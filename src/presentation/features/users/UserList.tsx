@@ -26,7 +26,7 @@ export function UserList({ users }: { users: User[] }) {
               <div className="flex flex-col">
                 <span className="flex items-center gap-2 font-semibold">
                   {user.name}
-                  {user.role === "ADMIN" && <Badge tone="info">Admin</Badge>}
+                  {user.role !== "CUSTOMER" && <Badge tone="info">Admin</Badge>}
                   {isRepeatBuyer(user) && <Badge tone="success">Langganan</Badge>}
                 </span>
                 <span className="text-xs text-ink-muted">

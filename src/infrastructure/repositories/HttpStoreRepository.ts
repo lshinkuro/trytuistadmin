@@ -1,4 +1,4 @@
-import type { StoreInput, StoreRepository } from "@/domain/store/Store";
+import type { StoreInput, StoreProductInput, StoreRepository } from "@/domain/store/Store";
 import type { AdminStoreDTO } from "../dto/dtos";
 import type { HttpClient } from "../http/httpClient";
 import { toStore, toStoreBody } from "../mappers/mappers";
@@ -21,10 +21,12 @@ export class HttpStoreRepository implements StoreRepository {
     return toStore(res.data);
   }
 
-  async setProductAvailability(storeId: string, productId: string, isAvailable: boolean) {
-    await this.http.put(
-      `/v1/admin/stores/${encodeURIComponent(storeId)}/products/${encodeURIComponent(productId)}`,
-      { is_available: isAvailable },
-    );
+  async setStoreProduct(storeId: string, productId: string, input: StoreProductInput) {
+    await this.http.put(`/v1/admin/stores/${encodeURIComponent(storeId)}/products/${encodeURIComponent(productId)}`, {
+      is_listed: input.isListed,
+      is_available: !input.isSoldOut,
+      stock: input.stock,
+      price: input.price,
+    });
   }
 }

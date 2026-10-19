@@ -1,12 +1,17 @@
 "use client";
 
 import {
+  CreditCard,
+  GalleryHorizontal,
+  KeyRound,
+  Tags,
   History,
   LayoutDashboard,
   LogOut,
   Menu,
   ReceiptText,
   Store,
+  Truck,
   TicketPercent,
   Users,
   UtensilsCrossed,
@@ -15,6 +20,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { isSuperAdmin } from "@/domain/auth/Auth";
 import { ACTIVE_STATUSES } from "@/domain/order/orderStatus";
 import { cn } from "@/shared/lib/cn";
 import { useCurrentAdmin, useLogout } from "../../hooks/useAuth";
@@ -25,11 +31,16 @@ import { ThemeToggle } from "./ThemeToggle";
 const NAV = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/orders", label: "Pesanan", icon: ReceiptText, showActiveCount: true },
+  { href: "/payments", label: "Pembayaran", icon: CreditCard },
   { href: "/products", label: "Produk & harga", icon: UtensilsCrossed },
   { href: "/promos", label: "Promo", icon: TicketPercent },
   { href: "/stores", label: "Outlet", icon: Store },
-  { href: "/customers", label: "Pelanggan", icon: Users },
-  { href: "/activity", label: "Aktivitas", icon: History },
+  { href: "/banners", label: "Banner", icon: GalleryHorizontal, superOnly: true },
+  { href: "/delivery", label: "Ongkir", icon: Truck, superOnly: true },
+  { href: "/categories", label: "Kategori", icon: Tags, superOnly: true },
+  { href: "/staff", label: "Akun admin", icon: KeyRound, superOnly: true },
+  { href: "/customers", label: "Pelanggan", icon: Users, superOnly: true },
+  { href: "/activity", label: "Aktivitas", icon: History, superOnly: true },
 ] as const;
 
 /** Jumlah pesanan yang masih perlu ditangani (badge di menu Pesanan). */
@@ -41,9 +52,12 @@ function useActiveOrderCount() {
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const activeCount = useActiveOrderCount();
+  const { data: admin } = useCurrentAdmin();
+  // Backend tetap menolak (403) bila admin outlet membuka halaman pusat lewat URL.
+  const items = NAV.filter((item) => !("superOnly" in item) || isSuperAdmin(admin));
   return (
     <nav aria-label="Menu utama" className="flex flex-col gap-0.5">
-      {NAV.map((item) => {
+      {items.map((item) => {
         const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
         const Icon = item.icon;
         return (
@@ -81,7 +95,9 @@ function AccountBlock() {
       </span>
       <span className="flex min-w-0 flex-1 flex-col leading-tight">
         <span className="truncate text-sm font-semibold">{admin?.name ?? "Memuat…"}</span>
-        <span className="truncate text-xs text-ink-muted">{admin?.email ?? ""}</span>
+        <span className="truncate text-xs text-ink-muted">
+          {admin ? (admin.store ? `Admin ${admin.store.name}` : "Super admin") : ""}
+        </span>
       </span>
       <ThemeToggle />
       <button

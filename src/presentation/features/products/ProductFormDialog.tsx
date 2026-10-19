@@ -2,17 +2,24 @@
 
 import { ImageOff, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { MAX_OPTIONS, type Product, type ProductInput } from "@/domain/product/Product";
+import { MAX_BUNDLE_ITEMS, MAX_OPTIONS, type Product, type ProductInput } from "@/domain/product/Product";
 import { AppError } from "@/domain/shared/errors";
 import { formatRupiah } from "@/shared/lib/format";
 import { Button, Dialog, Field, Input, Label, Select, Switch, Textarea } from "../../components/ui";
-import { useCategories, useCreateProduct, useUpdateProduct } from "../../hooks/useProducts";
+import { useCategories, useCreateProduct, useProducts, useUpdateProduct } from "../../hooks/useProducts";
 
 interface OptionRow {
   key: string;
   id?: string;
   name: string;
   extraPrice: string;
+}
+
+interface BundleRow {
+  key: string;
+  productId: string;
+  optionId: string;
+  quantity: string;
 }
 
 interface FormState {
@@ -24,9 +31,16 @@ interface FormState {
   isAvailable: boolean;
   isBestSeller: boolean;
   options: OptionRow[];
+  bundle: BundleRow[];
 }
 
 let rowSeq = 0;
+const newBundleRow = (b?: { productId: string; optionId: string | null; quantity: number }): BundleRow => ({
+  key: `bundle-${++rowSeq}`,
+  productId: b?.productId ?? "",
+  optionId: b?.optionId ?? "",
+  quantity: b ? String(b.quantity) : "1",
+});
 const newRow = (o?: { id?: string; name: string; extraPrice: number }): OptionRow => ({
   key: `row-${++rowSeq}`,
   id: o?.id,
@@ -44,6 +58,7 @@ function initialState(product: Product | null, defaultCategory: string): FormSta
     isAvailable: product?.isAvailable ?? true,
     isBestSeller: product?.isBestSeller ?? false,
     options: product?.options.map((o) => newRow(o)) ?? [],
+    bundle: product?.bundleItems.map((b) => newBundleRow(b)) ?? [],
   };
 }
 
@@ -59,6 +74,7 @@ function toInput(form: FormState): ProductInput {
     isAvailable: form.isAvailable,
     isBestSeller: form.isBestSeller,
     options: form.options.map((o) => ({ id: o.id, name: o.name, extraPrice: Number(o.extraPrice || 0) })),
+    bundleItems: form.bundle.map((b) => ({ productId: b.productId, optionId: b.optionId || null, quantity: Number(b.quantity || 0) })),
   };
 }
 
@@ -76,6 +92,9 @@ function changes(product: Product, input: ProductInput): Partial<ProductInput> {
   const before = JSON.stringify(product.options.map((o) => [o.id, o.name, o.extraPrice]));
   const after = JSON.stringify(input.options.map((o) => [o.id, o.name, o.extraPrice]));
   if (before !== after) out.options = input.options;
+  const bundleBefore = JSON.stringify(product.bundleItems.map((b) => [b.productId, b.optionId, b.quantity]));
+  const bundleAfter = JSON.stringify(input.bundleItems.map((b) => [b.productId, b.optionId, b.quantity]));
+  if (bundleBefore !== bundleAfter) out.bundleItems = input.bundleItems;
   return out;
 }
 
@@ -99,6 +118,19 @@ export function ProductFormDialog({ product, onClose }: { product: Product | nul
     clearError();
     setForm((f) => ({ ...f, options: f.options.map((o) => (o.key === key ? { ...o, ...patch } : o)) }));
   };
+  const setBundle = (key: string, patch: Partial<BundleRow>) => {
+    clearError();
+    setForm((f) => ({ ...f, bundle: f.bundle.map((b) => (b.key === key ? { ...b, ...patch } : b)) }));
+  };
+  // Pilihan isi paket: menu pusat selain dirinya sendiri & selain paket lain.
+  const catalog = useProducts({ query: "", categoryId: "", availability: "all", storeId: "" });
+  const candidates = (catalog.data ?? []).filter((p) => p.id !== product?.id && p.bundleItems.length === 0);
+  const byId = new Map(candidates.map((p) => [p.id, p]));
+  const separatePrice = form.bundle.reduce((sum, b) => {
+    const p = byId.get(b.productId);
+    const extra = p?.options.find((o) => o.id === b.optionId)?.extraPrice ?? 0;
+    return sum + (p ? (p.price + extra) * Number(b.quantity || 0) : 0);
+  }, 0);
 
   const input = toInput(form);
   const diff = product ? changes(product, input) : null;
@@ -215,6 +247,90 @@ export function ProductFormDialog({ product, onClose }: { product: Product | nul
             {form.options.length < MAX_OPTIONS && (
               <Button variant="outline" size="sm" className="w-fit" onClick={() => set("options", [...form.options, newRow()])}>
                 <Plus aria-hidden /> Tambah varian
+              </Button>
+            )}
+          </fieldset>
+
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 text-[0.8125rem] font-semibold">Isi paket (combo)</legend>
+            <p className="-mt-1 mb-1 text-[0.8125rem] text-ink-muted">
+              Opsional. Diisi = menu ini jadi paket: tampil dengan isi & &quot;hemat&quot; di aplikasi, ikut habis bila salah satu
+              isinya habis, dan stok isinya ikut berkurang saat dipesan.
+            </p>
+            {form.bundle.map((b, i) => {
+              const chosen = byId.get(b.productId);
+              return (
+                <div key={b.key} className="flex items-start gap-2">
+                  <div className="flex flex-1 flex-col gap-1">
+                    <Select
+                      aria-label={`Menu isi ${i + 1}`}
+                      value={b.productId}
+                      invalid={Boolean(errors[`bundleItems.${i}.productId`])}
+                      onChange={(e) => setBundle(b.key, { productId: e.target.value, optionId: "" })}
+                    >
+                      <option value="">Pilih menu…</option>
+                      {candidates.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} · {formatRupiah(p.price)}
+                        </option>
+                      ))}
+                    </Select>
+                    {errors[`bundleItems.${i}.productId`] && (
+                      <span className="text-xs text-danger">{errors[`bundleItems.${i}.productId`]}</span>
+                    )}
+                  </div>
+                  <Select
+                    aria-label={`Varian isi ${i + 1}`}
+                    className="w-36"
+                    value={b.optionId}
+                    disabled={!chosen || chosen.options.length === 0}
+                    invalid={Boolean(errors[`bundleItems.${i}.optionId`])}
+                    onChange={(e) => setBundle(b.key, { optionId: e.target.value })}
+                  >
+                    <option value="">{chosen && chosen.options.length > 0 ? "Varian awal" : "—"}</option>
+                    {chosen?.options.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+                        {o.extraPrice > 0 ? ` (+${formatRupiah(o.extraPrice)})` : ""}
+                      </option>
+                    ))}
+                  </Select>
+                  <div className="flex w-20 flex-col gap-1">
+                    <Input
+                      aria-label={`Jumlah isi ${i + 1}`}
+                      inputMode="numeric"
+                      className="tabular"
+                      value={b.quantity}
+                      invalid={Boolean(errors[`bundleItems.${i}.quantity`])}
+                      onChange={(e) => setBundle(b.key, { quantity: digits(e.target.value) })}
+                    />
+                    {errors[`bundleItems.${i}.quantity`] && <span className="text-xs text-danger">{errors[`bundleItems.${i}.quantity`]}</span>}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Hapus isi ${chosen?.name ?? i + 1}`}
+                    onClick={() => set("bundle", form.bundle.filter((x) => x.key !== b.key))}
+                  >
+                    <Trash2 />
+                  </Button>
+                </div>
+              );
+            })}
+            {errors.bundleItems && <span className="text-xs text-danger">{errors.bundleItems}</span>}
+            {form.bundle.length > 0 && separatePrice > 0 && (
+              <p className="tabular text-[0.8125rem] text-ink-muted">
+                Beli satuan {formatRupiah(separatePrice)}
+                {input.price > 0 && input.price < separatePrice
+                  ? ` · pelanggan hemat ${formatRupiah(separatePrice - input.price)}`
+                  : input.price >= separatePrice
+                    ? " · harga paket belum lebih murah dari beli satuan"
+                    : ""}
+              </p>
+            )}
+            {form.bundle.length < MAX_BUNDLE_ITEMS && (
+              <Button variant="outline" size="sm" className="w-fit" onClick={() => set("bundle", [...form.bundle, newBundleRow()])}>
+                <Plus aria-hidden /> Tambah isi paket
               </Button>
             )}
           </fieldset>

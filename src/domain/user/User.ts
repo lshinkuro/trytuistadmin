@@ -1,6 +1,6 @@
 import type { Paginated } from "@/domain/shared/pagination";
 
-export type UserRole = "CUSTOMER" | "ADMIN";
+export type UserRole = "CUSTOMER" | "SUPER_ADMIN" | "OUTLET_ADMIN";
 export type MemberTier = "SILVER" | "GOLD" | "PLATINUM";
 
 /** Pelanggan (dan admin) beserta ringkasan pembeliannya. */
