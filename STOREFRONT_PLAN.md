@@ -92,5 +92,7 @@ Google Sign-In, push notification web, PWA/offline, hapus akun, deeplink QR outl
 
 Selesai: §1–§3 dan urutan kerja §5 langkah 1–7. `npm run check` (15 test) & `npm run build` hijau; tidak ada API key di bundle browser. Uji ujung ke ujung lewat BFF ke API lokal: login, quote (ongkir per jarak + ETA), checkout COD + retry Idempotency-Key, batal, logout, proxy menolak `/v1/admin/*` (404) & Origin asing (403).
 
+Tambahan: lupa kata sandi (`/lupa-password`, BFF `/api/auth/forgot` & `/reset`), ganti kata sandi (`/api/auth/password`, cookie sesi diganti) dan verifikasi email di `/akun`; checkout `403 EMAIL_NOT_VERIFIED` menautkan ke `/akun`.
+
 Belum: Bayar Online belum dicoba dengan akun Midtrans sandbox sungguhan; tampilan belum diuji di banyak ukuran layar; deploy storefront.
 

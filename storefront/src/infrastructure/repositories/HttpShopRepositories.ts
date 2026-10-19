@@ -85,6 +85,12 @@ export class HttpAccountRepository implements AccountRepository {
   async deleteAddress(id: string) {
     await this.http.delete(`/v1/me/addresses/${encodeURIComponent(id)}`);
   }
+  async sendVerification() {
+    await this.http.post("/v1/me/email/verification");
+  }
+  async verifyEmail(code: string) {
+    await this.http.post("/v1/me/email/verify", { code });
+  }
   async paymentMethods() {
     const d = (await this.http.get<Json>("/v1/me/payment-methods")).data;
     return { defaultId: d.default_id, methods: (d.methods ?? []).map(m.toPaymentMethod) };

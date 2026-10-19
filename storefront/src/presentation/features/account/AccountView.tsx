@@ -8,6 +8,7 @@ import { AppError } from "@/domain/shared/errors";
 import { ErrorState } from "../../components/common/States";
 import { Button, Card, Dialog, Field, Input, Skeleton, Switch, Textarea } from "../../components/ui";
 import { useDeleteAddress, useAddresses, useMe, useSaveAddress } from "../../hooks/useShopData";
+import { ChangePasswordDialog, VerifyEmailCard } from "./SecuritySection";
 import { useDependencies } from "../../providers/DependenciesProvider";
 
 export function AccountView() {
@@ -15,6 +16,7 @@ export function AccountView() {
   const addresses = useAddresses();
   const remove = useDeleteAddress();
   const { auth } = useDependencies();
+  const [changingPassword, setChangingPassword] = useState(false);
   const [editing, setEditing] = useState<Address | null | "new">(useSearchParams().get("alamat") === "baru" ? "new" : null);
 
   const logout = async () => {
@@ -39,6 +41,7 @@ export function AccountView() {
           <Skeleton className="h-12 w-full" />
         )}
       </Card>
+      {me.data && !me.data.emailVerified && <VerifyEmailCard email={me.data.email} />}
 
       <div className="flex items-center justify-between">
         <h2 className="font-bold">Alamat pengiriman</h2>
@@ -70,10 +73,14 @@ export function AccountView() {
         </Card>
       ))}
 
-      <Button variant="outline" className="mt-4 text-danger" onClick={logout}>
+      <Button variant="outline" className="mt-4" onClick={() => setChangingPassword(true)}>
+        {me.data?.hasPassword === false ? "Buat kata sandi" : "Ganti kata sandi"}
+      </Button>
+      <Button variant="outline" className="text-danger" onClick={logout}>
         <LogOut aria-hidden /> Keluar
       </Button>
 
+      {changingPassword && me.data && <ChangePasswordDialog hasPassword={me.data.hasPassword} onClose={() => setChangingPassword(false)} />}
       {editing && <AddressDialog key={editing === "new" ? "new" : editing.id} address={editing === "new" ? null : editing} onClose={() => setEditing(null)} />}
     </div>
   );

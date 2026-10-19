@@ -58,6 +58,11 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
               required
             />
           </Field>
+          {mode === "login" && (
+            <Link href="/lupa-password" className="-mt-2 self-end text-sm font-semibold text-brand">
+              Lupa kata sandi?
+            </Link>
+          )}
           {error && Object.keys(fe).length === 0 && (
             <p role="alert" className="text-sm text-danger">
               {error.message}

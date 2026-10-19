@@ -15,6 +15,7 @@ describe("allowlist BFF storefront", () => {
     expect(isAllowed("GET", "v1/payments/6c2f-1")).toBe(true);
     expect(isAllowed("POST", "v1/orders/abc/cancel")).toBe(true);
     expect(isAllowed("PATCH", "v1/me/addresses/abc")).toBe(true);
+    expect(isAllowed("POST", "v1/me/email/verify")).toBe(true);
   });
 
   it("admin, dev, auth, device & webhook ditolak", () => {
@@ -22,6 +23,8 @@ describe("allowlist BFF storefront", () => {
     expect(isAllowed("POST", "v1/dev/orders/x/status")).toBe(false);
     expect(isAllowed("POST", "v1/auth/login")).toBe(false);
     expect(isAllowed("PUT", "v1/me/devices")).toBe(false);
+    // Ganti password memberi sesi baru → lewat /api/auth/password (cookie), bukan proxy.
+    expect(isAllowed("POST", "v1/me/password")).toBe(false);
     expect(isAllowed("POST", "v1/payments/midtrans/notification")).toBe(false);
   });
 

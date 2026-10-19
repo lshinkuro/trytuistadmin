@@ -159,7 +159,14 @@ export const toOrderDetail = (d: Json): OrderDetail => ({
   refund: d.refund ? { status: d.refund.status, amount: d.refund.amount ?? 0 } : null,
 });
 
-export const toProfile = (d: Json): Profile => ({ id: d.id, name: d.name, email: d.email, phone: d.phone ?? null });
+export const toProfile = (d: Json): Profile => ({
+  id: d.id,
+  name: d.name,
+  email: d.email,
+  phone: d.phone ?? null,
+  emailVerified: d.email_verified !== false,
+  hasPassword: d.has_password !== false,
+});
 
 export const toAddress = (d: Json): Address => ({
   id: d.id,

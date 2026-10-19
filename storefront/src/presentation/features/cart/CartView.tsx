@@ -239,6 +239,14 @@ export function CartView() {
       {checkout.error instanceof AppError && (
         <p role="alert" className="text-sm text-danger">
           {checkout.error.message}
+          {checkout.error.type === "EMAIL_NOT_VERIFIED" && (
+            <>
+              {" "}
+              <Link href="/akun" className="font-semibold underline">
+                Verifikasi sekarang
+              </Link>
+            </>
+          )}
         </p>
       )}
 

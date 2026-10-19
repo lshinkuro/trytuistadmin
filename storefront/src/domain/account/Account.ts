@@ -3,6 +3,10 @@ export interface Profile {
   name: string;
   email: string;
   phone: string | null;
+  /** Wajib untuk memesan. */
+  emailVerified: boolean;
+  /** false = akun Google tanpa password (ganti password tanpa password lama). */
+  hasPassword: boolean;
 }
 
 export interface Address {
@@ -36,4 +40,6 @@ export interface AccountRepository {
   updateAddress(id: string, input: Partial<AddressInput>): Promise<Address>;
   deleteAddress(id: string): Promise<void>;
   paymentMethods(): Promise<{ defaultId: string; methods: PaymentMethod[] }>;
+  sendVerification(): Promise<void>;
+  verifyEmail(code: string): Promise<void>;
 }

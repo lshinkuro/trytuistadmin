@@ -16,6 +16,7 @@ const PUBLIC_GET = [
 const CUSTOMER = [
   /^v1\/me(\/(addresses|payment-methods|favorites|vouchers)(\/[^/]+)?)?$/,
   /^v1\/me\/payment-methods\/default$/,
+  /^v1\/me\/email\/(verification|verify)$/,
   /^v1\/orders(\/quote)?$/,
   /^v1\/orders\/[^/]+(\/(cancel|rating))?$/,
   /^v1\/checkout$/,
